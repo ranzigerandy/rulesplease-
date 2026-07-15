@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Board Game Rules Wizard - Research Report</title>
+  <style>
+    :root {
+      --ink: #17201b;
+      --muted: #5f6a63;
+      --line: #d9ddd6;
+      --paper: #fbfaf6;
+      --surface: #ffffff;
+      --panel: #eef3ef;
+      --teal: #116a67;
+      --teal-dark: #0b4d4b;
+      --rust: #b35a2d;
+      --amber: #f0c86a;
+      --red: #b4232b;
+      --green: #217a46;
+      --shadow: 0 18px 55px rgba(23, 32, 27, .12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(17, 106, 103, .04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(17, 106, 103, .04) 1px, transparent 1px),
+        var(--paper);
+      background-size: 36px 36px;
+      font-family: Aptos, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    a {
+      color: var(--teal-dark);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    code {
+      padding: 1px 5px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: #f6f7f4;
+      color: #243a35;
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-size: .92em;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 285px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 28px 22px;
+      overflow: auto;
+      color: #f3f5ef;
+      background: #17201b;
+      border-right: 1px solid rgba(255, 255, 255, .08);
+    }
+
+    .brand {
+      margin-bottom: 28px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid rgba(255, 255, 255, .14);
+    }
+
+    .brand .kicker {
+      margin: 0 0 9px;
+      color: #aeb9b2;
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 25px;
+      line-height: 1.08;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .brand .date {
+      margin: 14px 0 0;
+      color: #cbd2ca;
+      font-size: 14px;
+    }
+
+    .nav-label {
+      margin: 0 0 10px;
+      color: #aeb9b2;
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .nav {
+      display: grid;
+      gap: 4px;
+      margin-bottom: 24px;
+    }
+
+    .nav a {
+      display: block;
+      padding: 8px 10px;
+      border-radius: 7px;
+      color: #eef3ef;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .nav a:hover {
+      background: rgba(255, 255, 255, .08);
+    }
+
+    .side-note {
+      margin-top: 20px;
+      padding: 14px;
+      border: 1px solid rgba(255, 255, 255, .14);
+      border-radius: 8px;
+      color: #d7ded7;
+      background: rgba(255, 255, 255, .04);
+      font-size: 13px;
+    }
+
+    main {
+      padding: 44px min(5vw, 64px) 72px;
+    }
+
+    .masthead {
+      max-width: 1120px;
+      margin: 0 auto 26px;
+      padding-bottom: 24px;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    .masthead .eyebrow {
+      display: inline-block;
+      margin-bottom: 12px;
+      padding: 5px 9px;
+      border: 1px solid var(--teal);
+      border-radius: 6px;
+      color: var(--teal-dark);
+      background: rgba(17, 106, 103, .08);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .masthead h2 {
+      max-width: 850px;
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 44px;
+      line-height: 1.03;
+      letter-spacing: 0;
+    }
+
+    .masthead p {
+      max-width: 850px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .content {
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+
+    section {
+      margin: 34px 0;
+      scroll-margin-top: 22px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h3 {
+      margin: 0 0 10px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 28px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    h4 {
+      margin: 22px 0 8px;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 13px;
+    }
+
+    ul,
+    ol {
+      margin: 10px 0 0;
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .card {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 8px 24px rgba(23, 32, 27, .06);
+    }
+
+    .card h4 {
+      margin-top: 0;
+    }
+
+    .metric {
+      display: flex;
+      flex-direction: column;
+      min-height: 136px;
+      border-top: 4px solid var(--teal);
+    }
+
+    .metric strong {
+      display: block;
+      margin-bottom: 8px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24px;
+      line-height: 1.12;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .callout {
+      padding: 18px 20px;
+      border-left: 5px solid var(--rust);
+      border-radius: 0 8px 8px 0;
+      background: #fff5ec;
+    }
+
+    .callout.good {
+      border-left-color: var(--green);
+      background: #eef8f0;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 25px;
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .badge.go {
+      color: #155b33;
+      background: #dff1e5;
+    }
+
+    .badge.caution {
+      color: #684200;
+      background: #f7e6b6;
+    }
+
+    .badge.no {
+      color: #7d151c;
+      background: #f4d7d9;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 850px;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      color: #2d3b35;
+      background: #edf2ee;
+      font-size: 12px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .status-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .status-row {
+      display: grid;
+      grid-template-columns: 210px 190px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+      padding: 13px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .status-row:last-child {
+      border-bottom: 0;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 12px 0 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #19221d;
+      color: #ecf3ea;
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .source-list {
+      columns: 2;
+      column-gap: 32px;
+      padding-left: 18px;
+    }
+
+    .source-list li {
+      break-inside: avoid;
+      margin-bottom: 8px;
+    }
+
+    .footer {
+      margin-top: 48px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 980px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: relative;
+        height: auto;
+      }
+
+      .nav {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      main {
+        padding: 30px 20px 52px;
+      }
+
+      .masthead h2 {
+        font-size: 34px;
+      }
+
+      .grid.two,
+      .grid.three {
+        grid-template-columns: 1fr;
+      }
+
+      .status-row {
+        grid-template-columns: 1fr;
+      }
+
+      .source-list {
+        columns: 1;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .shell {
+        display: block;
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      main {
+        padding: 0;
+      }
+
+      .table-wrap,
+      .card {
+        box-shadow: none;
+      }
+
+      a {
+        color: #000;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <p class="kicker">Research dossier</p>
+        <h1>Board Game Rules Wizard</h1>
+        <p class="date">2 juli 2026</p>
+      </div>
+      <p class="nav-label">Navigatie</p>
+      <nav class="nav" aria-label="Rapport navigatie">
+        <a href="#summary">Samenvatting</a>
+        <a href="#bgg">BGG API</a>
+        <a href="#rulebooks">Rulebooks</a>
+        <a href="#pdf">PDF pipeline</a>
+        <a href="#rag">Retrieval</a>
+        <a href="#models">Models</a>
+        <a href="#architecture">Architectuur</a>
+        <a href="#risks">Risico's</a>
+        <a href="#sources">Bronnen</a>
+      </nav>
+      <div class="side-note">
+        <strong>Bottom line:</strong> haalbaar als MVP met BGG-identificatie, publisher-first rulebook discovery, OCR, eigen chunks en strikte pagina-citaties.
+      </div>
+    </aside>
+
+    <main>
+      <header class="masthead">
+        <span class="eyebrow">Feasibility report</span>
+        <h2>Een rules chatbot kan werken, maar alleen met gecontroleerde bronnen en page-aware retrieval.</h2>
+        <p>Dit browserrapport vat de research samen over BGG, rulebook discovery, PDF parsing, retrieval, modelkeuze, kosten en MVP-scope.</p>
+      </header>
+
+      <div class="content">
+        <section id="summary">
+          <div class="section-title">
+            <h3>Executive Summary</h3>
+          </div>
+          <div class="grid three">
+            <article class="card metric">
+              <strong>MVP: Go</strong>
+              <span>Niet als volledig automatische long-tail oplossing, wel als gecontroleerde workflow met review en citaties.</span>
+            </article>
+            <article class="card metric">
+              <strong>BGG: dependency</strong>
+              <span>API-gebruik vereist registratie, approval, bearer token en mogelijk commerciele licentie.</span>
+            </article>
+            <article class="card metric">
+              <strong>OCR verplicht</strong>
+              <span>Een test-PDF voor Viticulture had 20 pagina's maar 0 extraheerbare tekst zonder OCR.</span>
+            </article>
+          </div>
+          <div class="grid two" style="margin-top:14px">
+            <div class="callout good">
+              <h4>Aanbevolen MVP-route</h4>
+              <ul>
+                <li>BGG alleen gebruiken voor spelidentificatie.</li>
+                <li>Publisher-first rulebook discovery met manual review bij twijfel.</li>
+                <li>PDF opslaan als bron, maar indexeren op pagina- en chunkniveau.</li>
+                <li>Hybrid retrieval: full-text plus vector search plus reranking.</li>
+                <li>Antwoorden alleen uit geciteerde passages met paginanummer.</li>
+              </ul>
+            </div>
+            <div class="callout">
+              <h4>Belangrijkste blokkades</h4>
+              <ul>
+                <li>BGG approval en commerciele voorwaarden.</li>
+                <li>Juridische toestemming voor bewaren/verwerken van rulebooks.</li>
+                <li>Foutieve editie of expansion-rulebook.</li>
+                <li>PDF's met image-only tekst of complexe layouts.</li>
+                <li>Hallucinaties zonder harde retrieval-gate.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section id="bgg">
+          <div class="section-title">
+            <h3>BGG API En Spelidentificatie</h3>
+            <span class="badge caution">Go with dependency</span>
+          </div>
+          <p>BGG XML API2 documenteert <code>/xmlapi2/search</code> voor naamzoekopdrachten en <code>/xmlapi2/thing</code> voor detailmetadata. De actuele "Using the XML API" pagina vermeldt registratie, approval, authorization en bearer tokens. Een applicatie moet server-side cachen en requestvolumes beperken.</p>
+          <pre>GET https://boardgamegeek.com/xmlapi2/search?query=wingspan&amp;type=boardgame&amp;exact=1
+Result: 401 Unauthorized
+
+GET https://boardgamegeek.com/xmlapi2/thing?id=266192&amp;stats=1
+Result: 401 Unauthorized</pre>
+          <h4>UX-conclusie</h4>
+          <ol>
+            <li>User typt spelnaam.</li>
+            <li>Backend zoekt BGG server-side met token.</li>
+            <li>UI toont kandidaten met titel, jaar, type, publisher en eventueel image/rating.</li>
+            <li>User kiest exact spel.</li>
+            <li><code>bgg_game_id</code> wordt de primaire identity voor rulebook discovery.</li>
+          </ol>
+        </section>
+
+        <section id="rulebooks">
+          <div class="section-title">
+            <h3>Rulebook Discovery Testmatrix</h3>
+            <span class="badge caution">Niet volledig automatisch</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Game</th>
+                  <th>BGG</th>
+                  <th>Bron</th>
+                  <th>Download</th>
+                  <th>Extractie</th>
+                  <th>Verdict</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Wingspan</strong></td>
+                  <td>266192</td>
+                  <td>Stonemaier rules page linkt naar Dropbox-folder; folder bevat <code>WS_Rulebook_r24.pdf</code>.</td>
+                  <td>Directe PDF mirror faalde met 403; Dropbox-folder downloadde als 783 MB zip.</td>
+                  <td>12 pagina's, 32.998 chars, goede tekst.</td>
+                  <td><span class="badge go">Haalbaar</span> Custom downloader nodig voor folders en max-size checks.</td>
+                </tr>
+                <tr>
+                  <td><strong>Viticulture</strong></td>
+                  <td>128621 / 183394</td>
+                  <td>Stonemaier rules page plus directe Steam manual candidate.</td>
+                  <td>Steam PDF download OK, 23.4 MB.</td>
+                  <td>20 pagina's, 0 chars via pdfplumber.</td>
+                  <td><span class="badge caution">OCR nodig</span> Edition ambiguity en source review.</td>
+                </tr>
+                <tr>
+                  <td><strong>Frutticola</strong></td>
+                  <td>234900</td>
+                  <td>Giochix direct PDF; BGG filepage signal bestaat.</td>
+                  <td>Direct download OK, 5.1 MB.</td>
+                  <td>12 pagina's, 27.695 chars, goede tekst behalve 1 vrijwel lege pagina.</td>
+                  <td><span class="badge go">Medium-high</span> Goed als publisher PDF bekend is.</td>
+                </tr>
+                <tr>
+                  <td><strong>SUMO</strong></td>
+                  <td>406257</td>
+                  <td>Bright Eye Games bevestigt spel; Golden Meeple PDF mirror getest.</td>
+                  <td>Direct download OK, 6.5 MB.</td>
+                  <td>2 pagina's, 5.480 chars, goede tekst.</td>
+                  <td><span class="badge caution">Medium</span> Titel is ambigu en bron is mirror.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4>Discovery pipeline</h4>
+          <div class="grid two">
+            <div class="card">
+              <h4>Bronvolgorde</h4>
+              <ol>
+                <li>Official publisher page uit BGG metadata of web search.</li>
+                <li>Publisher domain search.</li>
+                <li>Generic web search op titel plus rulebook PDF.</li>
+                <li>BGG files alleen als discoverability signal.</li>
+                <li>Retail/library mirrors alleen als fallback.</li>
+                <li>Manual review bij lage confidence.</li>
+              </ol>
+            </div>
+            <div class="card">
+              <h4>Ranking-signalen</h4>
+              <ul>
+                <li>Publisher domain match.</li>
+                <li>PDF filename bevat titel of afkorting.</li>
+                <li>Tekst bevat titel, publisher, setup/components.</li>
+                <li>BGG year/publisher match.</li>
+                <li>Geen expansion-keywords tenzij expliciet gekozen.</li>
+                <li>PDF is tekst-extractable of OCRbaar.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section id="pdf">
+          <div class="section-title">
+            <h3>PDF Parsing En Opslag</h3>
+            <span class="badge go">Go met OCR</span>
+          </div>
+          <p>De PDF-pipeline moet bronbestanden, pagina's, tekst en chunks apart bewaren. Alleen een PDF blob opslaan is onvoldoende voor betrouwbare citaties.</p>
+          <div class="grid two">
+            <article class="card">
+              <h4>Opslagmodel</h4>
+              <ul>
+                <li><code>games</code>: BGG id, titel, jaar, publisher, editie.</li>
+                <li><code>rulebook_sources</code>: URL, source type, confidence, legal status.</li>
+                <li><code>rulebooks</code>: file hash, storage key, size, page count, status.</li>
+                <li><code>rulebook_pages</code>: page number, extracted text, OCR flag.</li>
+                <li><code>rulebook_chunks</code>: chunk text, page range, heading, confidence.</li>
+                <li><code>chunk_embeddings</code>: vector, model, dimensions.</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h4>Indexing</h4>
+              <ul>
+                <li>Full-text index op page/chunk text.</li>
+                <li>Trigram of exacte keyword search voor kaartnamen en regeltermen.</li>
+                <li>Vector index voor semantische retrieval.</li>
+                <li>Metadata filters op BGG id, taal, editie en expansion-status.</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section id="rag">
+          <div class="section-title">
+            <h3>Retrieval En Chatbotarchitectuur</h3>
+          </div>
+          <p>Regex alleen is te smal en vector search alleen is te los. De juiste default is hybrid retrieval met een harde bewijsdrempel.</p>
+          <div class="card">
+            <ol>
+              <li>Normalize question.</li>
+              <li>Detect selected game and rulebook edition from session.</li>
+              <li>Run exact/full-text retrieval.</li>
+              <li>Run vector retrieval.</li>
+              <li>Merge and rerank results.</li>
+              <li>Keep top 4-8 chunks with page numbers.</li>
+              <li>Generate answer only from supplied chunks.</li>
+              <li>Require structured output: answer, citations, confidence, not-found flag.</li>
+              <li>If no chunk passes threshold, answer that the rule is not found in the loaded rules.</li>
+              <li>UI opens the cited PDF page with "Bekijk passage".</li>
+            </ol>
+          </div>
+          <pre>You are a rules assistant. Answer only from the provided rule passages.
+If the passages do not contain the answer, say that the answer is not found in the loaded rules.
+Every factual claim must cite at least one passage id and page number.
+Do not use general board game knowledge.</pre>
+        </section>
+
+        <section id="models">
+          <div class="section-title">
+            <h3>DeepSeek Vs OpenAI</h3>
+          </div>
+          <div class="grid two">
+            <article class="card">
+              <h4>DeepSeek</h4>
+              <p>Goed kandidaat-answer-model na retrieval. De docs tonen OpenAI-compatible API's en lage tokenprijzen. Het is geen vervanging voor retrieval, OCR, page metadata of citation checks. Er werd geen first-party embeddings/file-search equivalent gevonden zoals OpenAI File Search.</p>
+              <p><strong>Beste rol:</strong> kostenoptimisatie na een citation-eval suite.</p>
+            </article>
+            <article class="card">
+              <h4>OpenAI</h4>
+              <p>Sterker voor een end-to-end prototype dankzij File Search en Vector Stores. Voor productie blijft self-managed retrieval aanbevolen door de nood aan deterministische paginacitaties, source confidence en legal metadata.</p>
+              <p><strong>Beste rol:</strong> prototype en eerste MVP wanneer citation quality prioritair is.</p>
+            </article>
+          </div>
+          <h4>Kostinschatting per 1.000 vragen</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Setup</th>
+                  <th>Indicatie</th>
+                  <th>Opmerking</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>OpenAI File Search prototype</td>
+                  <td>Circa $7.60 plus storage</td>
+                  <td>Op basis van File Search tool call plus 2k input / 800 output tokenaanname.</td>
+                </tr>
+                <tr>
+                  <td>DeepSeek v4-flash answer model</td>
+                  <td>Circa $0.50 exclusief retrieval infra</td>
+                  <td>Alleen geschikt als retrieval en citation checks extern geregeld zijn.</td>
+                </tr>
+                <tr>
+                  <td>DeepSeek v4-pro answer model</td>
+                  <td>Circa $1.57 exclusief retrieval infra</td>
+                  <td>Duurdere DeepSeek-optie; nog steeds citation-eval nodig.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="architecture">
+          <div class="section-title">
+            <h3>Technische Architectuur Voor MVP</h3>
+          </div>
+          <div class="grid three">
+            <article class="card">
+              <h4>Frontend</h4>
+              <ul>
+                <li>BGG-powered autocomplete.</li>
+                <li>Game result picker.</li>
+                <li>Rulebook candidate review.</li>
+                <li>Ingestion progress.</li>
+                <li>Chat UI met page citations.</li>
+                <li>PDF viewer voor passages.</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h4>Backend services</h4>
+              <ul>
+                <li><code>bgg-service</code></li>
+                <li><code>discovery-service</code></li>
+                <li><code>ingestion-worker</code></li>
+                <li><code>retrieval-service</code></li>
+                <li><code>qa-service</code></li>
+                <li><code>admin-review</code></li>
+              </ul>
+            </article>
+            <article class="card">
+              <h4>Stack</h4>
+              <ul>
+                <li>Next.js of Remix.</li>
+                <li>Node/TypeScript API of Python FastAPI workers.</li>
+                <li>Postgres + pgvector.</li>
+                <li>S3/R2 object storage.</li>
+                <li>Queue: Redis/BullMQ.</li>
+                <li>PDF: pdfplumber/pypdf + OCR.</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section id="risks">
+          <div class="section-title">
+            <h3>Go/No-Go En Risico's</h3>
+          </div>
+          <div class="status-list card">
+            <div class="status-row">
+              <strong>BGG game search</strong>
+              <span class="badge caution">Go with dependency</span>
+              <span>Technisch simpel, maar afhankelijk van approval, token en licentie.</span>
+            </div>
+            <div class="status-row">
+              <strong>Rulebook discovery</strong>
+              <span class="badge caution">Go for MVP</span>
+              <span>Werkt voor testcases, maar niet volledig automatisch voor long-tail.</span>
+            </div>
+            <div class="status-row">
+              <strong>PDF parsing</strong>
+              <span class="badge go">Go met OCR</span>
+              <span>3/4 kandidaten hadden tekst; 1/4 vereist OCR.</span>
+            </div>
+            <div class="status-row">
+              <strong>Page citations</strong>
+              <span class="badge go">Go self-managed</span>
+              <span>Betrouwbaar als chunks page metadata bewaren.</span>
+            </div>
+            <div class="status-row">
+              <strong>DeepSeek-only</strong>
+              <span class="badge no">No-go</span>
+              <span>Goed answer model, maar geen volledige retrieval/citation oplossing.</span>
+            </div>
+            <div class="status-row">
+              <strong>OpenAI File Search only</strong>
+              <span class="badge caution">Prototype go</span>
+              <span>Snel te valideren, maar minder controle over legal/source/page pipeline.</span>
+            </div>
+          </div>
+          <h4>Aanbevolen MVP-scope</h4>
+          <ul>
+            <li>Private MVP.</li>
+            <li>Base games only.</li>
+            <li>Engelstalige rulebooks.</li>
+            <li>Publisher source preferred.</li>
+            <li>Manual review bij lage confidence.</li>
+            <li>Self-managed ingestion en retrieval.</li>
+            <li>Alleen antwoorden met pagina-citaties.</li>
+          </ul>
+        </section>
+
+        <section id="sources">
+          <div class="section-title">
+            <h3>Bronnen</h3>
+          </div>
+          <ul class="source-list">
+            <li><a href="https://boardgamegeek.com/wiki/page/BGG_XML_API2">BGG XML API2</a></li>
+            <li><a href="https://boardgamegeek.com/using_the_xml_api">BGG XML API usage/auth/licensing</a></li>
+            <li><a href="https://developers.openai.com/api/docs/guides/tools-file-search">OpenAI File Search docs</a></li>
+            <li><a href="https://developers.openai.com/api/reference/resources/vector_stores/methods/search">OpenAI Vector Store Search API</a></li>
+            <li><a href="https://developers.openai.com/api/docs/pricing">OpenAI API pricing</a></li>
+            <li><a href="https://api-docs.deepseek.com/">DeepSeek first API call</a></li>
+            <li><a href="https://api-docs.deepseek.com/quick_start/pricing">DeepSeek models/pricing</a></li>
+            <li><a href="https://stonemaiergames.com/games/wingspan/rules/">Stonemaier Wingspan rules page</a></li>
+            <li><a href="https://stonemaiergames.com/games/viticulture/rules/">Stonemaier Viticulture rules page</a></li>
+            <li><a href="https://rulepop.com/wingspan/">Rulepop Wingspan</a></li>
+            <li><a href="https://www.giochix.it/rules/frutticola%20ENG.pdf">Frutticola PDF</a></li>
+            <li><a href="https://boardgamegeek.com/filepage/216714/english-rulebook">Frutticola BGG filepage signal</a></li>
+            <li><a href="https://www.brighteyegames.com/games">Bright Eye Games game list</a></li>
+            <li><a href="https://www.goldenmeeple.be/wp-content/uploads/2024/07/Sumo-Rulebook.pdf">SUMO PDF candidate</a></li>
+          </ul>
+        </section>
+
+        <p class="footer">Browser-versie gebaseerd op <a href="board-game-rules-wizard-research.md">het volledige Markdown research report</a> en <a href="rulebook-test-matrix.md">de testmatrix</a>.</p>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

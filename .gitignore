@@ -1,0 +1,12 @@
+# Local runtime data and downloaded rulebooks
+data/
+output/
+__pycache__/
+*.py[cod]
+
+# Local server logs
+server-*.log
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
