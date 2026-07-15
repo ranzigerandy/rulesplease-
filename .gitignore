@@ -6,6 +6,8 @@ __pycache__/
 
 # Local server logs
 server-*.log
+*.out.log
+*.err.log
 
 # Editor and operating-system files
 .DS_Store

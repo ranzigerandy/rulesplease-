@@ -1,6 +1,6 @@
 # Board Game Rules Wizard - Project State / TODO
 
-Laatste update: 2026-07-02  
+Laatste update: 2026-07-15
 Statuslegende: `[ ]` nog te doen, `[x]` klaar
 
 Dit bestand is de projectstatus op taakniveau. Werk dit bestand bij wanneer een taak wordt afgerond, geblokkeerd of opgesplitst.
@@ -17,6 +17,12 @@ Dit bestand is de projectstatus op taakniveau. Werk dit bestand bij wanneer een 
 - [x] DL.8 UI-taal vastgelegd als Engels.
 - [x] DL.9 Eerste beta-catalogus nog niet vastgelegd; technische MVP gebruikt research-games.
 - [x] DL.10 BGG CSV dump vastgelegd: `C:\Users\kdeme\Documents\Karel Demeersseman\Boardgame rules\boardgames_ranks_2026-07-02\boardgames_ranks.csv`.
+- [x] DL.11 Convex wordt gefaseerd de centrale database, realtime-laag, vectorzoeklaag en cloudopslag.
+- [x] DL.12 De frontend migreert naar Next.js App Router; de bestaande statische/Python-app blijft tijdelijk beschikbaar als rollback.
+- [x] DL.13 Python blijft de ingestion-worker voor discovery, PDF-download, extractie en OCR en communiceert via beveiligde Convex worker-endpoints.
+- [x] DL.14 Convex Auth met password-provider is de standaard; data-autorisatie wordt in alle Convex-functies server-side afgedwongen.
+- [x] DL.15 Alleen geselecteerde spellen worden naar Convex gemigreerd; de volledige BGG CSV-catalogus blijft voorlopig lokaal.
+- [x] DL.16 Clerk vervangt Convex Auth voor accountmanagement; Convex valideert Clerk-sessiontokens en gebruikt de Clerk user-ID voor alle gegevensisolatie. DL.14 is hiermee vervallen.
 
 ## M0 - Research en productdefinitie
 
@@ -79,6 +85,18 @@ Dit bestand is de projectstatus op taakniveau. Werk dit bestand bij wanneer een 
 - [ ] M2.8 `questions` en `question_citations` tabellen implementeren.
 - [ ] M2.9 Lokale filesystem storage configureren voor raw PDFs en page images.
 - [ ] M2.9a Repository/storage interfaces ontwerpen zodat later Convex/cloud storage mogelijk blijft.
+
+### Convex migratie
+
+- [x] M2.C1 Hybride Convex/Next.js/Python-architectuur vastleggen.
+- [x] M2.C2 Next.js/Convex-projectbasis en Clerk-authenticatie met Convex-tokenvalidatie configureren.
+- [x] M2.C3 Convex-schema, indexen en gebruikersautorisatie implementeren.
+- [x] M2.C4 Beveiligde ingestion-jobinterface en Python-workeradapter implementeren.
+- [x] M2.C5 Idempotente import voor lokale state, chats, citaties en chunks implementeren.
+- [x] M2.C6 Bibliotheek-, setup- en chatschermen naar Next.js porten.
+- [ ] M2.C7 PDF's naar Convex Storage migreren en vector search activeren. (Schema, uploadpad en vectorzoekcode zijn gereed; bestaande PDF's en embeddings worden pas na de cloudkoppeling gemigreerd.)
+- [ ] M2.C8 Cloud-developmentdeployment aan een blijvend Convex-account koppelen.
+- [ ] M2.C9 Vercel-frontend en afzonderlijke Python-worker deployen.
 
 ### Services
 
