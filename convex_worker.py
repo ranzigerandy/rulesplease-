@@ -112,6 +112,7 @@ def process_claim(api, claim):
     pages = None
     last_error = None
     review_reasons = []
+    review_candidate = None
 
     _heartbeat(api, job, "searching_rulebook", 8, "Looking for a matching English rulebook.")
     for candidate in _source_candidates(game):
@@ -141,6 +142,16 @@ def process_claim(api, claim):
                 last_error = ValueError(identity["reason"])
                 if identity["reviewRequired"]:
                     review_reasons.append(identity["reason"])
+                    if review_candidate is None:
+                        review_candidate = (
+                            {
+                                **candidate,
+                                "edition": identity["edition"],
+                                "confidence": identity["confidence"],
+                            },
+                            pdf_path,
+                            pages,
+                        )
                 continue
             selected_source = {
                 **candidate,
@@ -150,6 +161,9 @@ def process_claim(api, claim):
             break
         except Exception as exc:  # continue through ranked candidates
             last_error = exc
+
+    if not selected_source and review_candidate:
+        selected_source, pdf_path, pages = review_candidate
 
     if not selected_source or not pdf_path or not pages:
         if review_reasons:

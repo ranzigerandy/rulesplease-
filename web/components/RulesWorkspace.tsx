@@ -277,13 +277,19 @@ function WorkspaceContent() {
                 <h1>{selected.game?.name}</h1>
                 <button className="round-action chat-info" aria-label="About this rulebook" onClick={() => setShowRulebookInfo(true)}><Info /></button>
               </header>
-              {selected.status === "review_required" && selected.rulebookSource ? (
-                <RulebookApproval
-                  game={selected.game}
-                  source={selected.rulebookSource}
-                  approving={approvingRulebook}
+              {selected.status === "review_required" ? (
+                selected.rulebookSource ? (
+                  <RulebookApproval
+                    game={selected.game}
+                    source={selected.rulebookSource}
+                    approving={approvingRulebook}
+                    replacing={replacingRulebook}
+                    onApprove={() => void approveSelectedRulebook()}
+                    onReplace={() => void replaceWrongRulebook()}
+                  />
+                ) : <RulebookRetry
+                  gameName={selected.game?.name ?? "this game"}
                   replacing={replacingRulebook}
-                  onApprove={() => void approveSelectedRulebook()}
                   onReplace={() => void replaceWrongRulebook()}
                 />
               ) : selected.status !== "ready" ? <ProcessingPanel game={selected} /> : (
@@ -387,6 +393,22 @@ function RulebookApproval({ game, source, approving, replacing, onApprove, onRep
         </button>
       </div>
       <small className="approval-note">This protects your answers from being based on the wrong game or edition.</small>
+    </section>
+  );
+}
+
+function RulebookRetry({ gameName, replacing, onReplace }: { gameName: string; replacing: boolean; onReplace: () => void }) {
+  return (
+    <section className="rulebook-approval rulebook-retry">
+      <div className="approval-mark"><RefreshCw /></div>
+      <span className="approval-eyebrow">One more check needed</span>
+      <h2>We could not confirm this rulebook yet.</h2>
+      <p>The automatic check finished, but it was not confident enough to show a source for {gameName}.</p>
+      <button type="button" className="approval-confirm" disabled={replacing} onClick={onReplace}>
+        {replacing ? <LoaderCircle className="spin" /> : <RefreshCw />}
+        {replacing ? "Searching again…" : "Search again"}
+      </button>
+      <small className="approval-note">No chat will be created until a rulebook can be reviewed and approved.</small>
     </section>
   );
 }
