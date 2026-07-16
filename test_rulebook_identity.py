@@ -66,6 +66,17 @@ class RulebookIdentityTests(unittest.TestCase):
         self.assertTrue(verdict["approved"])
         self.assertEqual(verdict["edition"], "base game")
 
+    def test_html_result_pages_are_not_rulebook_candidates(self):
+        game = {"id": 154125, "name": "Pocket Battles: Confederacy vs Union", "year": 2014}
+        candidates = {}
+        app_server.add_candidate(
+            candidates,
+            "https://example.com/pocket-battles-confederacy-vs-union-rules",
+            game,
+        )
+
+        self.assertEqual(candidates, {})
+
 
 if __name__ == "__main__":
     unittest.main()

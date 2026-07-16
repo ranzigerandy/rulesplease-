@@ -67,6 +67,12 @@ RULEBOOK_SOURCES = {
         "confidence": "verified",
         "edition": "base game",
     },
+    154125: {
+        "url": "https://www.exodusbooks.com/samples/games/57362sample.pdf",
+        "label": "Pocket Battles: Confederacy vs Union rulebook (Z-Man Games sample)",
+        "confidence": "verified",
+        "edition": "base game",
+    },
 }
 
 EDITION_MARKERS = (
@@ -390,10 +396,11 @@ def discover_rulebook_candidates(game, progress=None):
             urls.append(decode_search_url(match.group(0)))
 
         for url in urls[:35]:
-            add_candidate(candidates, url, game)
-            if ".pdf" not in urllib.parse.urlparse(url).path.lower():
-                for pdf_url in extract_pdf_links(url, game)[:6]:
-                    add_candidate(candidates, pdf_url, game)
+            if is_pdf_url(url):
+                add_candidate(candidates, url, game)
+                continue
+            for pdf_url in extract_pdf_links(url, game)[:6]:
+                add_candidate(candidates, pdf_url, game)
 
     ordered = sorted(candidates.values(), key=lambda item: item["score"], reverse=True)
     log_discovery(f"game={name!r} candidates={len(ordered)}")
@@ -422,6 +429,10 @@ def extract_pdf_links(page_url, game):
     return dedupe(links)
 
 
+def is_pdf_url(url):
+    return ".pdf" in urllib.parse.urlparse(url).path.lower()
+
+
 def dedupe(items):
     seen = set()
     result = []
@@ -437,6 +448,8 @@ def add_candidate(candidates, url, game):
     url = url.strip().rstrip(").,;")
     parsed = urllib.parse.urlparse(url)
     if parsed.scheme not in {"http", "https"}:
+        return
+    if not is_pdf_url(url):
         return
     host = parsed.netloc.lower()
     if any(blocked in host for blocked in ["facebook.com", "youtube.com", "youtu.be", "reddit.com", "scribd.com"]):
@@ -564,7 +577,15 @@ def download_pdf(source, game, progress=None):
     )
     with urllib.request.urlopen(request, timeout=30) as response:
         content_type = response.headers.get("Content-Type", "")
-        if "pdf" not in content_type.lower() and not url.lower().split("?")[0].endswith(".pdf"):
+        if "pdf" not in content_type.lower():
+            fallback_urls = [
+                candidate for candidate in extract_pdf_links(url, game)
+                if candidate != url
+            ]
+            if fallback_urls:
+                return download_pdf(
+                    {**source, "url": fallback_urls[0]}, game, progress=progress,
+                )
             raise ValueError(f"Source is not a PDF response: {content_type}")
         expected = int(response.headers.get("Content-Length") or 0)
         total = 0
