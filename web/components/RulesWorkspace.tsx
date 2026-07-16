@@ -91,6 +91,7 @@ type CitationRecord = {
   order: number;
   pdfUrl?: string | null;
   pageCount?: number | null;
+  excerpt?: string;
 };
 
 export function RulesWorkspace() {
@@ -417,7 +418,7 @@ function minimalCitations(answer: string, citations: CitationRecord[]) {
     return `${bestStart > 0 ? "… " : ""}${excerpt}${bestStart + windowSize < words.length ? " …" : ""}`;
   };
   if (citations.length <= 1) {
-    return citations.map((citation) => ({ ...citation, quote: focusQuote(citation.quote) }));
+    return citations.map((citation) => ({ ...citation, excerpt: focusQuote(citation.quote) }));
   }
   const ranked = citations
     .map((citation, index) => ({
@@ -430,11 +431,14 @@ function minimalCitations(answer: string, citations: CitationRecord[]) {
   const second = ranked.find(({ citation }) => citation.page !== ranked[0].citation.page);
   const answerClaims = answer.split(/[.!?](?:\s|$)/).filter((part) => part.trim()).length;
   if (answerClaims > 1 && second && second.hits >= Math.max(3, Math.ceil(ranked[0].hits * 0.8))) selected.push(second);
-  return selected.map(({ citation }) => ({ ...citation, quote: focusQuote(citation.quote) }));
+  return selected.map(({ citation }) => ({ ...citation, excerpt: focusQuote(citation.quote) }));
 }
 
 function ChatPanel({ gameName, messages, citations, question, setQuestion, asking, submit }: { gameName: string; messages: ChatMessage[]; citations: CitationRecord[]; question: string; setQuestion: (value: string) => void; asking: boolean; submit: () => Promise<void> }) {
-  const [openCitations, setOpenCitations] = useState<CitationRecord[]>([]);
+  const [expandedCitationMessageId, setExpandedCitationMessageId] = useState<string | null>(null);
+  // Sources now expand inline; this keeps the legacy dialog permanently closed.
+  const openCitations: CitationRecord[] = [];
+  const setOpenCitations = (_citations: CitationRecord[]) => { void _citations; };
   const [viewerSource, setViewerSource] = useState<RulebookViewerSource | null>(null);
   const citationMap = new Map<string, CitationRecord[]>();
   for (const citation of citations) {
@@ -461,12 +465,42 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
           const messageCitations = role === "assistant"
             ? minimalCitations(text, rawMessageCitations)
             : [];
+          const citationsExpanded = expandedCitationMessageId === message.id;
           return (
             <article key={message.id} className={`message-bubble ${role}`}>
               {role === "assistant" ? <MessageResponse>{text}</MessageResponse> : <p>{text}</p>}
               {messageCitations.length > 0 && (
-                <div className="citation-row">
-                  <button type="button" onClick={() => setOpenCitations(messageCitations)}><BookOpenText />{messageCitations.length} {messageCitations.length === 1 ? "source" : "sources"}</button>
+                <div className={`citation-row ${citationsExpanded ? "is-expanded" : ""}`}>
+                  <button
+                    type="button"
+                    aria-expanded={citationsExpanded}
+                    aria-controls={`sources-${message.id}`}
+                    onClick={() => setExpandedCitationMessageId((current) => current === message.id ? null : message.id)}
+                  ><BookOpenText />{messageCitations.length} {messageCitations.length === 1 ? "source" : "sources"}<ChevronRight className="citation-chevron" /></button>
+                  {citationsExpanded && (
+                    <section className="inline-source-list" id={`sources-${message.id}`} aria-label="Rulebook sources">
+                      {messageCitations.map((citation) => (
+                        <article key={citation._id} className="inline-source-card">
+                          <header>
+                            <span>{citation.sourceLabel} · page {citation.page}</span>
+                            {citation.pdfUrl ? (
+                              <button type="button" className="open-rulebook-button" onClick={() => setViewerSource({
+                                page: citation.page,
+                                pageCount: citation.pageCount,
+                                pdfUrl: citation.pdfUrl as string,
+                                quote: citation.quote,
+                                sourceLabel: citation.sourceLabel,
+                                sourceUrl: citation.sourceUrl,
+                              })}>Open rulebook <BookOpenCheck /></button>
+                            ) : (
+                              <a href={rulebookPageUrl(citation.sourceUrl, citation.page)} target="_blank" rel="noreferrer">Open cited page <ExternalLink /></a>
+                            )}
+                          </header>
+                          <blockquote>{citation.quote}</blockquote>
+                        </article>
+                      ))}
+                    </section>
+                  )}
                 </div>
               )}
             </article>
