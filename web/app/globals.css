@@ -392,6 +392,185 @@
   .rulebooks-content { width: calc(100% - 48px); }
 }
 
+/* ChatGPT iOS-inspired mobile system, mapped from Mobbin references. */
+.rules-app { padding-bottom: 0; background: #fff; }
+.rules-app button { transition: background-color 140ms ease, color 140ms ease, transform 140ms ease; }
+.rules-app button:active { transform: scale(.97); }
+
+.home-screen { width: 100%; padding: 14px 18px 104px; }
+.home-topbar { min-height: 52px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.home-brand { display: flex; align-items: center; gap: 9px; }
+.home-brand img { width: 34px; height: 34px; object-fit: contain; }
+.home-brand strong { font-size: 20px; line-height: 1; font-weight: 680; letter-spacing: -.025em; }
+.home-settings { position: static; width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 50%; background: #f4f4f4; }
+.home-settings:hover { background: #e9e9e9; }
+.home-settings svg { width: 19px; height: 19px; }
+.home-actions { display: block; }
+.chat-search { min-height: 44px; gap: 9px; padding: 0 13px; border: 0; border-radius: 12px; background: #f2f2f2; }
+.chat-search:focus-within { border: 0; box-shadow: 0 0 0 2px rgba(13,13,13,.08); }
+.chat-search svg { width: 17px; height: 17px; color: #757575; }
+.chat-search input { font-size: 15px; }
+.home-rulebooks-link { width: 100%; min-height: 58px; display: grid; grid-template-columns: 28px minmax(0,1fr) 18px; align-items: center; gap: 10px; margin-top: 13px; padding: 8px 4px; border: 0; border-bottom: 1px solid rgba(13,13,13,.08); color: #111; background: transparent; text-align: left; }
+.home-rulebooks-link > svg:first-child { width: 21px; height: 21px; }
+.home-rulebooks-link > svg:last-child { width: 16px; height: 16px; color: #9a9a9a; }
+.home-rulebooks-link > span { display: grid; gap: 1px; }
+.home-rulebooks-link strong { font-size: 15px; font-weight: 590; }
+.home-rulebooks-link small { color: #777; font-size: 12px; }
+.recent-chats { gap: 0; margin-top: 23px; padding-bottom: 28px; }
+.recent-chats h2 { margin: 0 0 8px; color: #707070; font-size: 13px; font-weight: 560; letter-spacing: 0; }
+.recent-chat-card { min-height: 72px; grid-template-columns: 46px minmax(0,1fr); gap: 12px; padding: 8px 4px; border: 0; border-radius: 12px; }
+.recent-chat-card:hover { border-color: transparent; background: #f4f4f4; }
+.recent-chat-card .game-cover, .recent-chat-card .game-monogram { width: 46px; height: 56px; border-radius: 8px; }
+.recent-chat-card > span { gap: 2px; }
+.recent-chat-card strong { font-size: 15px; font-weight: 590; }
+.recent-chat-card small { font-size: 13px; line-height: 1.3; -webkit-line-clamp: 1; }
+.recent-chat-card em { color: #8a8a8a; font-size: 11px; }
+.home-empty { min-height: 260px; border: 0; background: transparent; }
+.home-new-chat { position: fixed; right: 18px; bottom: max(20px, env(safe-area-inset-bottom)); z-index: 35; width: auto; min-height: 48px; padding: 0 18px; border-radius: 999px; box-shadow: 0 8px 24px rgba(0,0,0,.2); font-size: 15px; }
+.home-new-chat svg { width: 18px; height: 18px; }
+
+.subscreen { min-height: 100svh; background: #fff; }
+.screen-header { min-height: 60px; padding: 0 14px; border: 0; background: rgba(255,255,255,.92); }
+.screen-header button { width: 38px; height: 38px; background: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.08); }
+.screen-header button:hover { background: #f4f4f4; }
+.screen-header svg { width: 18px; height: 18px; }
+.screen-header h1 { font-size: 15px; font-weight: 650; }
+.subscreen-content { width: 100%; padding: 28px 18px 36px; }
+.new-chat-intro { gap: 8px; margin-bottom: 24px; }
+.new-chat-intro img { width: 58px; height: 58px; margin: 0 auto 4px; object-fit: contain; }
+.new-chat-intro h1 { font-size: 25px; }
+.new-chat-intro p { max-width: 310px; margin: 0 auto; font-size: 14px; line-height: 1.4; }
+.new-chat-choices { display: none; }
+.catalog-search { width: 100%; min-height: 48px; grid-template-columns: 18px minmax(0,1fr) 38px; gap: 8px; margin: 0 0 24px; padding: 5px 5px 5px 13px; border: 0; border-radius: 14px; background: #f2f2f2; }
+.catalog-search > svg { width: 17px; height: 17px; }
+.catalog-search input { height: 38px; padding: 0; font-size: 15px; background: transparent; }
+.catalog-search button { width: 38px; height: 38px; padding: 0; border-radius: 50%; }
+.catalog-search button { grid-column: auto; }
+.catalog-search input:focus, .catalog-search input:focus-visible { outline: 0; box-shadow: none; }
+.catalog-search button svg { width: 17px; height: 17px; }
+.catalog-results, .recent-chats.compact { width: 100%; }
+.catalog-results { gap: 0; margin-bottom: 28px; }
+.catalog-results h2, .recent-chats.compact h2 { margin-bottom: 7px; color: #777; font-size: 13px; font-weight: 560; }
+.catalog-results article { min-height: 72px; grid-template-columns: 46px minmax(0,1fr) 38px; gap: 12px; padding: 8px 4px; border: 0; border-bottom: 1px solid rgba(13,13,13,.07); border-radius: 0; }
+.catalog-results .game-cover, .catalog-results .game-monogram { width: 46px; height: 56px; border-radius: 8px; }
+.catalog-results strong { font-size: 15px; font-weight: 590; }
+.catalog-results small { font-size: 12px; }
+.catalog-results article > button { width: 36px; min-width: 36px; height: 36px; overflow: hidden; padding: 0; border-radius: 50%; font-size: 0; }
+.catalog-results article > button::after { color: #111; font-size: 22px; line-height: 1; content: "+"; }
+.recent-chats.compact { margin-top: 0; }
+
+.subscreen:has(.settings-content) { background: #f2f2f7; }
+.subscreen:has(.settings-content) .screen-header { background: rgba(242,242,247,.9); }
+.settings-content { width: 100%; gap: 22px; padding: 22px 14px 40px; }
+.settings-account { grid-template-columns: 1fr; justify-items: center; gap: 8px; padding: 8px 0 6px; text-align: center; }
+.settings-account img { width: 72px; height: 72px; padding: 9px; border-radius: 50%; background: #10a37f; }
+.settings-account > span { gap: 1px; }
+.settings-account strong { font-size: 22px; }
+.settings-account small { font-size: 13px; }
+.settings-account > :last-child { margin-top: 3px; }
+.settings-account > :last-child { display: flex; padding: 5px 10px; border-radius: 999px; background: #fff; }
+.settings-section { gap: 7px; }
+.settings-section h2 { padding-left: 12px; color: #7a7a80; font-size: 11px; font-weight: 560; letter-spacing: .04em; text-transform: uppercase; }
+.settings-section > div { border: 0; border-radius: 13px; background: #fff; }
+.settings-section button { min-height: 48px; padding: 10px 13px; border-bottom-color: rgba(60,60,67,.13); }
+.settings-section button > span { font-size: 15px; }
+.settings-section em { color: #8b8b90; font-size: 14px; }
+.settings-toggle { width: 43px; height: 25px; }
+.settings-toggle::after { width: 19px; height: 19px; }
+
+.rulebooks-content { width: 100%; padding-top: 26px; }
+.rulebooks-content .new-chat-intro { justify-items: start; margin-bottom: 20px; text-align: left; }
+.rulebooks-content .new-chat-intro h1 { font-size: 24px; }
+.rulebooks-content .new-chat-intro p { max-width: none; margin: 0; }
+.rulebook-list { gap: 0; }
+.rulebook-list button { min-height: 72px; grid-template-columns: 46px minmax(0,1fr) auto; gap: 12px; padding: 8px 4px; border: 0; border-bottom: 1px solid rgba(13,13,13,.07); border-radius: 0; }
+.rulebook-list button:hover { background: #f4f4f4; }
+.rulebook-list .game-cover, .rulebook-list .game-monogram { width: 46px; height: 56px; border-radius: 8px; }
+.rulebook-list strong { font-size: 15px; font-weight: 590; }
+.rulebook-list small { font-size: 12px; -webkit-line-clamp: 1; }
+.rulebook-list em, .rulebook-list em.ready { padding: 5px 8px; color: #6f6f6f; background: #f2f2f2; font-size: 10px; }
+
+.chat-header { min-height: 64px; grid-template-columns: 40px 38px minmax(0,1fr) 40px; gap: 9px; padding: 7px 12px; border: 0; background: rgba(255,255,255,.92); backdrop-filter: blur(18px); }
+.chat-header h1 { font-size: 16px; font-weight: 650; }
+.chat-header .game-cover, .chat-header .game-monogram { width: 38px; height: 46px; border-radius: 7px; }
+.round-action { width: 38px; height: 38px; border: 0; box-shadow: 0 4px 18px rgba(0,0,0,.08); }
+.round-action svg { width: 18px; height: 18px; }
+.chat-layout { height: calc(100svh - 64px); }
+.message-stream { width: calc(100% - 28px); padding: 24px 0 18px; }
+.message-bubble { margin-bottom: 26px; font-size: 15px; line-height: 1.48; }
+.message-bubble.user { max-width: 83%; padding: 9px 13px; border-radius: 18px; background: #f1f1f1; }
+.chat-empty { min-height: 100%; gap: 7px; padding-bottom: 90px; }
+.chat-empty svg { width: 26px; height: 26px; }
+.chat-empty h2 { font-size: 22px; }
+.chat-empty p { max-width: 280px; font-size: 14px; }
+.question-composer { width: calc(100% - 24px); min-height: 52px; grid-template-columns: minmax(0,1fr) 40px; gap: 7px; margin-bottom: max(10px, env(safe-area-inset-bottom)); padding: 5px 6px 5px 16px; border-color: rgba(13,13,13,.08); box-shadow: 0 7px 24px rgba(0,0,0,.12); }
+.question-composer textarea { max-height: 92px; font-size: 15px; }
+.question-composer button { width: 40px; height: 40px; }
+.question-composer button svg { width: 18px; height: 18px; }
+.citation-disclosure { border-color: rgba(13,13,13,.1); }
+.citation-toggle { min-height: 34px; padding: 0 12px; font-size: 12px; }
+.citation-row.is-expanded .citation-disclosure { border-radius: 18px; box-shadow: none; }
+
+.processing-panel { height: calc(100svh - 64px); align-content: center; gap: 10px; padding: 30px 24px 100px; }
+.processing-panel h2 { font-size: 23px; }
+.processing-panel p { font-size: 14px; }
+.process-icon { width: 48px; height: 48px; color: #111; background: #f1f1f1; }
+.process-icon svg { width: 23px; height: 23px; }
+.progress-track { width: min(290px, 78vw); height: 5px; }
+.progress-track span { background: #111; }
+.processing-panel small { font-size: 11px; }
+
+.rulebook-approval { min-height: calc(100svh - 64px); align-content: start; gap: 11px; width: calc(100% - 32px); padding: 48px 0 30px; }
+.approval-mark { width: 48px; height: 48px; color: #111; background: #f1f1f1; }
+.approval-mark svg { width: 23px; height: 23px; }
+.approval-eyebrow { color: #777; font-size: 10px; }
+.rulebook-approval h2 { font-size: 24px; }
+.rulebook-approval > p { font-size: 14px; }
+.approval-source-card { grid-template-columns: 62px minmax(0,1fr); gap: 12px; padding: 10px; border: 0; border-radius: 15px; background: #f4f4f4; box-shadow: none; }
+.approval-source-card .game-cover, .approval-source-card .game-monogram { width: 62px; height: 78px; border-radius: 9px; }
+.approval-actions button, .rulebook-retry > .approval-confirm { min-height: 48px; border-radius: 999px; }
+.rulebook-retry > .approval-confirm { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+
+.source-backdrop { background: rgba(0,0,0,.24); backdrop-filter: blur(5px); }
+.source-sheet { border: 0; border-radius: 24px 24px 0 0; box-shadow: 0 -12px 40px rgba(0,0,0,.12); }
+.source-sheet > header { min-height: 66px; padding: 12px 17px; }
+.source-sheet > header span { color: #8a8a8a; font-size: 9px; }
+.source-sheet > header h2 { font-size: 17px; }
+.source-sheet > header button { width: 34px; height: 34px; border: 0; background: #eee; }
+.rulebook-info-content { gap: 14px; padding: 16px 16px 26px; }
+.identity-verdict { border: 0; border-radius: 13px; background: #eff8f5; }
+.rulebook-info-content dl { border: 0; border-radius: 13px; background: #f4f4f4; }
+.wrong-rulebook-card { border: 0; border-radius: 13px; }
+
+@media (max-width: 900px) {
+  .rules-app { padding-bottom: 0; }
+  .home-screen { padding: 14px 18px 104px; }
+  .subscreen-content { width: 100%; padding: 28px 18px 36px; }
+  .chat-header { min-height: 64px; grid-template-columns: 40px 38px minmax(0,1fr) 40px; padding: 7px 12px; }
+  .chat-header .game-cover, .chat-header .game-monogram { width: 38px; height: 46px; }
+  .chat-header h1 { font-size: 16px; }
+  .round-action { width: 38px; height: 38px; }
+  .chat-layout { height: calc(100svh - 64px); }
+  .message-stream { width: calc(100% - 28px); padding: 24px 0 18px; }
+  .question-composer { width: calc(100% - 24px); min-height: 52px; margin-bottom: max(10px, env(safe-area-inset-bottom)); padding-left: 16px; }
+  .settings-content, .rulebooks-content { width: 100%; }
+}
+
+@media (min-width: 901px) {
+  .rules-app { padding-bottom: 0; }
+  .home-screen { padding: 14px 18px 104px; }
+  .home-new-chat { right: calc((100vw - 430px) / 2 + 18px); }
+  .subscreen-content { width: 100%; padding: 28px 18px 36px; }
+  .settings-content, .rulebooks-content { width: 100%; }
+  .chat-header { min-height: 64px; grid-template-columns: 40px 38px minmax(0,1fr) 40px; padding: 7px 12px; }
+  .chat-header .game-cover, .chat-header .game-monogram { width: 38px; height: 46px; }
+  .chat-header h1 { font-size: 16px; }
+  .round-action { width: 38px; height: 38px; }
+  .chat-layout { height: calc(100svh - 64px); }
+  .message-stream { width: calc(100% - 28px); padding: 24px 0 18px; }
+  .question-composer { width: calc(100% - 24px); min-height: 52px; margin-bottom: 10px; padding-left: 16px; }
+}
+
 /* Rules Please! production app — faithful to the original refined-minimal UI. */
 .rules-app {
   --app-rail: 360px;
@@ -834,3 +1013,116 @@
   .rulebook-page-nav { gap: 6px; padding: 0 8px; }
   .rulebook-page-nav button { min-height: 38px; padding: 0 10px; font-size: 11px; }
 }
+
+/* Final cascade: ChatGPT iOS-inspired presentation. */
+.rules-app { padding-bottom: 0; }
+.home-screen { width: 100%; padding: 14px 18px 104px; }
+.home-topbar { min-height: 52px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.home-brand { display: flex; align-items: center; gap: 9px; }
+.home-brand img { width: 34px; height: 34px; object-fit: contain; }
+.home-brand strong { font-size: 20px; font-weight: 680; letter-spacing: -.025em; }
+.home-settings { position: static; width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 50%; background: #f4f4f4; }
+.home-settings svg { width: 19px; height: 19px; }
+.home-actions { display: block; }
+.chat-search { min-height: 44px; gap: 9px; padding: 0 13px; border: 0; border-radius: 12px; background: #f2f2f2; }
+.chat-search svg { width: 17px; height: 17px; }
+.chat-search input { font-size: 15px; }
+.home-rulebooks-link { width: 100%; min-height: 58px; display: grid; grid-template-columns: 28px minmax(0,1fr) 18px; align-items: center; gap: 10px; margin-top: 13px; padding: 8px 4px; border: 0; border-bottom: 1px solid rgba(13,13,13,.08); background: transparent; text-align: left; }
+.home-rulebooks-link > span { display: grid; gap: 1px; }
+.home-rulebooks-link strong { font-size: 15px; font-weight: 590; }
+.home-rulebooks-link small { color: #777; font-size: 12px; }
+.home-rulebooks-link > svg { width: 19px; height: 19px; }
+.home-rulebooks-link > svg:last-child { width: 15px; color: #999; }
+.recent-chats { gap: 0; margin-top: 23px; padding-bottom: 28px; }
+.recent-chats h2 { margin: 0 0 8px; color: #707070; font-size: 13px; font-weight: 560; letter-spacing: 0; }
+.recent-chat-card { min-height: 72px; grid-template-columns: 46px minmax(0,1fr); gap: 12px; padding: 8px 4px; border: 0; border-radius: 12px; }
+.recent-chat-card:hover { border-color: transparent; background: #f4f4f4; }
+.recent-chat-card .game-cover, .recent-chat-card .game-monogram { width: 46px; height: 56px; border-radius: 8px; }
+.recent-chat-card > span { gap: 2px; }
+.recent-chat-card strong { font-size: 15px; font-weight: 590; }
+.recent-chat-card small { font-size: 13px; -webkit-line-clamp: 1; }
+.recent-chat-card em { color: #8a8a8a; font-size: 11px; }
+.home-new-chat { position: fixed; right: 18px; bottom: max(20px, env(safe-area-inset-bottom)); z-index: 35; width: auto; min-height: 48px; padding: 0 18px; border-radius: 999px; box-shadow: 0 8px 24px rgba(0,0,0,.2); font-size: 15px; }
+.home-new-chat svg { width: 18px; height: 18px; }
+
+.subscreen { min-height: 100svh; background: #fff; }
+.screen-header { min-height: 60px; padding: 0 14px; border: 0; background: rgba(255,255,255,.92); }
+.screen-header button { width: 38px; height: 38px; background: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.08); }
+.screen-header svg { width: 18px; height: 18px; }
+.screen-header h1 { font-size: 15px; }
+.subscreen-content { width: 100%; padding: 28px 18px 36px; }
+.new-chat-intro { gap: 8px; margin-bottom: 24px; }
+.new-chat-intro img { width: 58px; height: 58px; margin: 0 auto 4px; object-fit: contain; }
+.new-chat-intro h1 { font-size: 25px; }
+.new-chat-intro p { max-width: 310px; margin: 0 auto; font-size: 14px; }
+.new-chat-choices { display: none; }
+.catalog-search { width: 100%; min-height: 48px; grid-template-columns: 18px minmax(0,1fr) 38px; gap: 8px; margin: 0 0 24px; padding: 5px 5px 5px 13px; border: 0; border-radius: 14px; background: #f2f2f2; }
+.catalog-search > svg { width: 17px; height: 17px; }
+.catalog-search input { height: 38px; padding: 0; font-size: 15px; background: transparent; }
+.catalog-search button { width: 38px; height: 38px; padding: 0; border-radius: 50%; }
+.catalog-results, .recent-chats.compact { width: 100%; }
+.catalog-results { gap: 0; }
+.catalog-results h2, .recent-chats.compact h2 { color: #777; font-size: 13px; }
+.catalog-results article { min-height: 72px; grid-template-columns: 46px minmax(0,1fr) 38px; gap: 12px; padding: 8px 4px; border: 0; border-bottom: 1px solid rgba(13,13,13,.07); border-radius: 0; }
+.catalog-results .game-cover, .catalog-results .game-monogram { width: 46px; height: 56px; border-radius: 8px; }
+.catalog-results article > button { width: 36px; min-width: 36px; height: 36px; overflow: hidden; padding: 0; border-radius: 50%; font-size: 0; }
+.catalog-results article > button::after { font-size: 22px; content: "+"; }
+
+.subscreen:has(.settings-content) { background: #f2f2f7; }
+.subscreen:has(.settings-content) .screen-header { background: rgba(242,242,247,.9); }
+.settings-content { width: 100%; gap: 22px; padding: 22px 14px 40px; }
+.settings-account { grid-template-columns: 1fr; justify-items: center; gap: 8px; padding: 8px 0 6px; text-align: center; }
+.settings-account img { width: 72px; height: 72px; padding: 9px; border-radius: 50%; background: #10a37f; }
+.settings-account > span { gap: 1px; }
+.settings-account strong { font-size: 22px; }
+.settings-account > :last-child { margin-top: 3px; }
+.settings-section { gap: 7px; }
+.settings-section h2 { padding-left: 12px; color: #7a7a80; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+.settings-section > div { border: 0; border-radius: 13px; background: #fff; }
+.settings-section button { min-height: 48px; padding: 10px 13px; }
+.settings-section button > span { font-size: 15px; }
+.settings-section em { color: #8b8b90; font-size: 14px; }
+
+.rulebooks-content { width: 100%; padding: 26px 18px 36px; }
+.rulebooks-content .new-chat-intro { justify-items: start; margin-bottom: 20px; text-align: left; }
+.rulebooks-content .new-chat-intro h1 { font-size: 24px; }
+.rulebooks-content .new-chat-intro p { max-width: none; margin: 0; }
+.rulebook-list { gap: 0; }
+.rulebook-list button { min-height: 72px; grid-template-columns: 46px minmax(0,1fr) auto; gap: 12px; padding: 8px 4px; border: 0; border-bottom: 1px solid rgba(13,13,13,.07); border-radius: 0; }
+.rulebook-list .game-cover, .rulebook-list .game-monogram { width: 46px; height: 56px; border-radius: 8px; }
+.rulebook-list strong { font-size: 15px; }
+.rulebook-list small { font-size: 12px; -webkit-line-clamp: 1; }
+.rulebook-list em, .rulebook-list em.ready { padding: 5px 8px; color: #6f6f6f; background: #f2f2f2; font-size: 10px; }
+
+.chat-header { min-height: 64px; grid-template-columns: 40px 38px minmax(0,1fr) 40px; gap: 9px; padding: 7px 12px; border: 0; }
+.chat-header .game-cover, .chat-header .game-monogram { width: 38px; height: 46px; border-radius: 7px; }
+.chat-header h1 { font-size: 16px; }
+.round-action { width: 38px; height: 38px; border: 0; box-shadow: 0 4px 18px rgba(0,0,0,.08); }
+.round-action svg { width: 18px; height: 18px; }
+.chat-layout { height: calc(100svh - 64px); }
+.message-stream { width: calc(100% - 28px); padding: 24px 0 18px; }
+.message-bubble { margin-bottom: 26px; font-size: 15px; }
+.message-bubble.user { max-width: 83%; padding: 9px 13px; border-radius: 18px; }
+.question-composer { width: calc(100% - 24px); min-height: 52px; grid-template-columns: minmax(0,1fr) 40px; gap: 7px; margin-bottom: max(10px, env(safe-area-inset-bottom)); padding: 5px 6px 5px 16px; }
+.question-composer textarea { font-size: 15px; }
+.question-composer button { width: 40px; height: 40px; }
+.processing-panel { height: calc(100svh - 64px); padding-bottom: 100px; }
+.processing-panel h2 { font-size: 23px; }
+.process-icon { width: 48px; height: 48px; color: #111; background: #f1f1f1; }
+.progress-track { width: min(290px,78vw); height: 5px; }
+.progress-track span { background: #111; }
+.rulebook-approval { min-height: calc(100svh - 64px); align-content: start; width: calc(100% - 32px); padding: 48px 0 30px; }
+.approval-mark { width: 48px; height: 48px; color: #111; background: #f1f1f1; }
+.rulebook-approval h2 { font-size: 24px; }
+.approval-source-card { grid-template-columns: 62px minmax(0,1fr); padding: 10px; border: 0; border-radius: 15px; background: #f4f4f4; box-shadow: none; }
+.approval-source-card .game-cover, .approval-source-card .game-monogram { width: 62px; height: 78px; }
+.approval-actions button, .rulebook-retry > .approval-confirm { min-height: 48px; border-radius: 999px; }
+.source-sheet { border: 0; border-radius: 24px 24px 0 0; }
+
+@media (min-width: 901px) {
+  .home-new-chat { right: calc((100vw - 430px) / 2 + 18px); }
+}
+
+.catalog-search button { grid-column: auto; }
+.catalog-search input:focus, .catalog-search input:focus-visible { outline: 0; box-shadow: none; }
+.settings-account > :last-child { display: flex; padding: 5px 10px; border-radius: 999px; background: #fff; }

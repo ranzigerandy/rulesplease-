@@ -13,18 +13,14 @@ import { Authenticated, AuthLoading, Unauthenticated, useAction, useMutation, us
 import Image from "next/image";
 import {
   ArrowLeft,
-  BookOpen,
   BookOpenCheck,
   BookOpenText,
   ChevronRight,
   CircleAlert,
-  CircleUserRound,
-  Clock3,
   Dices,
   ExternalLink,
   LibraryBig,
   LoaderCircle,
-  MessageCircle,
   MessageSquareQuote,
   Plus,
   Search,
@@ -336,23 +332,15 @@ function WorkspaceContent() {
             <RulebooksWorkspace library={rows} onBack={() => openView("home")} onSelect={openChat} />
           ) : (
             <HomeWorkspace
-              userName={user?.firstName ?? "there"}
               library={rows}
               onAdd={() => openView("new-chat")}
+              onRulebooks={() => openView("rulebooks")}
               onSettings={() => openView("settings")}
               onSelect={openChat}
             />
           )}
         </section>
 
-        {!selected && (
-          <nav className="mobile-app-nav" aria-label="Main navigation">
-            <button className={view === "home" ? "active" : ""} onClick={() => openView("home")}><MessageCircle /><span>Chats</span></button>
-            <button className={view === "new-chat" ? "active" : ""} onClick={() => openView("new-chat")}><Search /><span>Add game</span></button>
-            <button className={view === "rulebooks" ? "active" : ""} onClick={() => openView("rulebooks")}><BookOpen /><span>Rulebooks</span></button>
-            <button className={view === "settings" ? "active" : ""} onClick={() => openView("settings")}><CircleUserRound /><span>Profile</span></button>
-          </nav>
-        )}
       </main>
     </>
   );
@@ -680,20 +668,19 @@ function SearchResultCover({ game }: { game: GameSearchResult }) {
   );
 }
 
-function HomeWorkspace({ userName, library, onAdd, onSettings, onSelect }: { userName: string; library: LibraryRow[]; onAdd: () => void; onSettings: () => void; onSelect: (id: Id<"libraryGames">) => void }) {
+function HomeWorkspace({ library, onAdd, onRulebooks, onSettings, onSelect }: { library: LibraryRow[]; onAdd: () => void; onRulebooks: () => void; onSettings: () => void; onSelect: (id: Id<"libraryGames">) => void }) {
   const [filter, setFilter] = useState("");
   const filtered = library.filter((row) => row.game?.name.toLowerCase().includes(filter.toLowerCase()));
   return (
     <div className="home-screen">
-      <button className="home-settings" aria-label="Settings" onClick={onSettings}><Settings /></button>
-      <section className="home-hero">
-        <h1>Hi {userName}!</h1>
-        <Image src="/rulesplease-mascot.png" alt="Rules Please mascot" width={150} height={150} priority />
-      </section>
+      <header className="home-topbar">
+        <div className="home-brand"><Image src="/rulesplease-mascot.png" alt="" width={38} height={38} priority /><strong>Rules Please!</strong></div>
+        <button className="home-settings" aria-label="Open profile and settings" onClick={onSettings}><Settings /></button>
+      </header>
       <div className="home-actions">
         <label className="chat-search"><Search /><input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Search chats…" /></label>
-        <Button className="home-new-chat" onClick={onAdd}><Plus /> Start a new rules chat</Button>
       </div>
+      <button className="home-rulebooks-link" onClick={onRulebooks}><BookOpenText /><span><strong>Rulebooks</strong><small>View indexed sources</small></span><ChevronRight /></button>
       <section className="recent-chats">
         <h2>Recent chats</h2>
         {library.length === 0 ? (
@@ -702,6 +689,7 @@ function HomeWorkspace({ userName, library, onAdd, onSettings, onSelect }: { use
           <div className="home-empty"><Search /><strong>No chats found</strong><span>Try another game title.</span></div>
         ) : filtered.map((row) => <RecentChatCard key={row._id} row={row} onSelect={onSelect} />)}
       </section>
+      <Button className="home-new-chat" onClick={onAdd}><Plus /> New chat</Button>
     </div>
   );
 }
@@ -720,25 +708,21 @@ function RecentChatCard({ row, onSelect }: { row: LibraryRow; onSelect: (id: Id<
 }
 
 function NewChatWorkspace({ library, query, setQuery, results, searching, runSearch, onBack, onSelect, onAdd }: { library: LibraryRow[]; query: string; setQuery: (value: string) => void; results: GameSearchResult[]; searching: boolean; runSearch: () => Promise<void>; onBack: () => void; onSelect: (id: Id<"libraryGames">) => void; onAdd: (game: GameSearchResult) => Promise<void> }) {
-  const [showSearch, setShowSearch] = useState(query.length > 0 || results.length > 0);
   return (
     <div className="subscreen">
-      <ScreenHeader title="New chat" onBack={onBack} />
+      <ScreenHeader title="New rules chat" onBack={onBack} />
       <div className="subscreen-content new-chat-content">
         <section className="new-chat-intro">
+          <Image src="/rulesplease-mascot.png" alt="" width={64} height={64} />
           <h1>What are you playing?</h1>
-          <p>A chat is linked to one game and one indexed rulebook.</p>
+          <p>Choose one game to start a cited rules chat.</p>
         </section>
-        <div className="new-chat-choices">
-          <button onClick={() => setShowSearch(true)}><span><Search /></span><strong>Search game</strong><small>Find a base game in the BGG catalog.</small></button>
-          <button onClick={() => document.getElementById("recent-games")?.scrollIntoView({ behavior: "smooth" })}><span><Clock3 /></span><strong>Recent chats</strong><small>Continue a saved rules conversation.</small></button>
-        </div>
-        {showSearch && <form className="catalog-search" onSubmit={(event) => { event.preventDefault(); void runSearch(); }}>
+        <form className="catalog-search" onSubmit={(event) => { event.preventDefault(); void runSearch(); }}>
           <Search />
           <Input id="catalog-search" autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search the BGG catalog…" />
-          <Button disabled={searching || query.trim().length < 2}>{searching ? <LoaderCircle className="spin" /> : "Search"}</Button>
-        </form>}
-        {showSearch && results.length > 0 && (
+          <Button size="icon" aria-label="Search catalog" disabled={searching || query.trim().length < 2}>{searching ? <LoaderCircle className="spin" /> : <Search />}</Button>
+        </form>
+        {results.length > 0 && (
           <section className="catalog-results">
             <h2>Search results</h2>
             {results.map((game) => (
