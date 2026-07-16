@@ -114,6 +114,9 @@ export default defineSchema({
     leaseExpiresAt: v.optional(v.number()),
     workerId: v.optional(v.string()),
     error: v.optional(v.string()),
+    sourceUrl: v.optional(v.string()),
+    sourceLabel: v.optional(v.string()),
+    sourceStorageId: v.optional(v.id("_storage")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

@@ -72,7 +72,10 @@ def _without_none(value):
     return value
 
 
-def _source_candidates(game):
+def _source_candidates(game, manual_source=None):
+    if manual_source:
+        yield manual_source
+        return
     known = app_server.RULEBOOK_SOURCES.get(game["id"])
     candidates = [known] if known else []
     candidates.extend(app_server.discover_rulebook_candidates(game))
@@ -113,9 +116,16 @@ def process_claim(api, claim):
     last_error = None
     review_reasons = []
     review_candidate = None
+    manual_source = claim.get("manualSource")
 
-    _heartbeat(api, job, "searching_rulebook", 8, "Looking for a matching English rulebook.")
-    for candidate in _source_candidates(game):
+    _heartbeat(
+        api,
+        job,
+        "searching_rulebook",
+        8,
+        "Checking your imported rulebook." if manual_source else "Looking for a matching English rulebook.",
+    )
+    for candidate in _source_candidates(game, manual_source):
         try:
             _heartbeat(
                 api,
@@ -127,6 +137,8 @@ def process_claim(api, claim):
             pdf_path = app_server.download_pdf(
                 candidate,
                 game,
+                force=bool(manual_source),
+                require_public_https=bool(manual_source),
                 progress=lambda percent, message: _heartbeat(
                     api, job, "downloading_rulebook", percent, message
                 ),
@@ -209,8 +221,8 @@ def process_claim(api, claim):
             },
         )
 
-    storage_id = None
-    if os.environ.get("RULES_PLEASE_UPLOAD_PDFS") == "1":
+    storage_id = job.get("sourceStorageId")
+    if not storage_id and os.environ.get("RULES_PLEASE_UPLOAD_PDFS") == "1":
         storage_id = api.upload_pdf(pdf_path)
     api.post(
         "/worker/jobs/complete",

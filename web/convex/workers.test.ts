@@ -126,4 +126,54 @@ describe("ingestion worker leases", () => {
     expect(state.library?.status).toBe("review_required");
     expect(state.rulebook?.status).toBe("review_required");
   });
+
+  test("returns an imported PDF URL as the only manual worker source", async () => {
+    const t = convexTest(schema, modules);
+    const now = Date.now();
+    await t.run(async (ctx) => {
+      const gameId = await ctx.db.insert("games", {
+        bggId: 417999,
+        name: "Imported Game",
+        isExpansion: false,
+        createdAt: now,
+        updatedAt: now,
+      });
+      const libraryGameId = await ctx.db.insert("libraryGames", {
+        userId: "user_import_test",
+        gameId,
+        status: "queued",
+        statusLabel: "Import queued",
+        statusMessage: "Waiting for imported PDF",
+        progress: 0,
+        addedAt: now,
+        updatedAt: now,
+      });
+      await ctx.db.insert("ingestionJobs", {
+        userId: "user_import_test",
+        libraryGameId,
+        gameId,
+        status: "queued",
+        phase: "queued",
+        progress: 0,
+        attempts: 0,
+        idempotencyKey: "manual-import-test",
+        sourceUrl: "https://example.com/imported-rules.pdf",
+        sourceLabel: "My imported rules.pdf",
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    const claimed = await t.mutation(internal.workers.claim, {
+      workerId: "test-worker",
+      leaseToken: "manual-lease",
+      leaseMs: 60_000,
+    });
+    expect(claimed?.manualSource).toEqual({
+      url: "https://example.com/imported-rules.pdf",
+      label: "My imported rules.pdf",
+      language: "en",
+      confidence: "user-import",
+    });
+  });
 });

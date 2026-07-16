@@ -1135,3 +1135,42 @@
 .catalog-search button { grid-column: auto; }
 .catalog-search input:focus, .catalog-search input:focus-visible { outline: 0; box-shadow: none; }
 .settings-account > :last-child { display: flex; padding: 5px 10px; border-radius: 999px; background: #fff; }
+
+.catalog-results article { grid-template-columns: 46px minmax(0,1fr) auto; }
+.catalog-result-actions { display: flex; align-items: center; gap: 6px; }
+.catalog-result-actions button { width: 36px; min-width: 36px; height: 36px; padding: 0; border-radius: 50%; }
+.catalog-result-actions button svg { width: 17px; height: 17px; }
+.catalog-result-actions button:first-child { color: #555; background: #f4f4f4; border-color: transparent; }
+
+.rulebook-import-sheet { max-height: min(720px, calc(100svh - 18px)); }
+.rulebook-import-content { display: grid; gap: 18px; overflow-y: auto; padding: 16px 16px calc(22px + env(safe-area-inset-bottom)); }
+.import-game-row { min-width: 0; display: grid; grid-template-columns: 48px minmax(0,1fr); align-items: center; gap: 12px; padding: 2px 2px 4px; }
+.import-game-row .game-cover, .import-game-row .game-monogram { width: 48px; height: 60px; border-radius: 9px; }
+.import-game-row > span { min-width: 0; display: grid; gap: 3px; }
+.import-game-row strong { overflow: hidden; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.import-game-row small { color: #777; font-size: 12px; }
+.import-method-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; border-radius: 12px; background: #f1f1f1; }
+.import-method-tabs button { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 9px; color: #666; background: transparent; font-size: 13px; font-weight: 620; }
+.import-method-tabs button.active { color: #111; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.09); }
+.import-method-tabs svg { width: 16px; height: 16px; }
+.import-file-panel > input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+.import-file-picker { width: 100%; min-height: 76px; display: grid; grid-template-columns: 38px minmax(0,1fr) 18px; align-items: center; gap: 11px; padding: 10px 12px; border: 0; border-radius: 14px; color: #111; background: #f4f4f4; text-align: left; }
+.import-file-picker > svg:first-child { width: 22px; height: 22px; padding: 9px; box-sizing: content-box; border-radius: 11px; background: #fff; }
+.import-file-picker > svg:last-child { width: 16px; height: 16px; color: #888; }
+.import-file-picker span { min-width: 0; display: grid; gap: 3px; }
+.import-file-picker strong { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.import-file-picker small { color: #777; font-size: 12px; }
+.import-url-field { display: grid; gap: 7px; }
+.import-url-field > span { padding-left: 3px; color: #777; font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; }
+.import-url-field > div { min-height: 50px; display: grid; grid-template-columns: 18px minmax(0,1fr); align-items: center; gap: 9px; padding: 0 13px; border-radius: 14px; background: #f2f2f2; }
+.import-url-field svg { width: 17px; height: 17px; color: #777; }
+.import-url-field input { height: 42px; padding: 0; border: 0; background: transparent; box-shadow: none; font-size: 14px; }
+.import-url-field input:focus, .import-url-field input:focus-visible { outline: 0; box-shadow: none; }
+.import-safety-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: #696969; font-size: 12px; line-height: 1.4; }
+.import-safety-note svg { width: 16px; height: 16px; flex: 0 0 auto; color: #16846b; }
+.import-submit { min-height: 48px; border-radius: 999px; }
+.import-submit svg { width: 18px; height: 18px; }
+.catalog-results-heading { min-height: 30px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.catalog-results-heading h2 { margin: 0; }
+.catalog-results-heading > span { display: inline-flex; align-items: center; gap: 5px; color: #777; font-size: 11px; font-weight: 560; }
+.catalog-results-heading > span svg { width: 14px; height: 14px; }

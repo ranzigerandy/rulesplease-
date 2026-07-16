@@ -1,9 +1,11 @@
 import csv
 import hashlib
 import html
+import ipaddress
 import json
 import os
 import re
+import socket
 import threading
 import time
 import urllib.error
@@ -565,9 +567,34 @@ def fetch_game_thumbnail(bgg_id):
         return target
 
 
-def download_pdf(source, game, progress=None):
+def validate_public_pdf_url(url):
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+        raise ValueError("Imported PDF URLs must use public HTTPS addresses.")
+    try:
+        addresses = socket.getaddrinfo(parsed.hostname, parsed.port or 443, type=socket.SOCK_STREAM)
+    except OSError as exc:
+        raise ValueError("The imported PDF hostname could not be resolved.") from exc
+    if not addresses:
+        raise ValueError("The imported PDF hostname could not be resolved.")
+    for address in addresses:
+        ip = ipaddress.ip_address(address[4][0])
+        if not ip.is_global:
+            raise ValueError("Imported PDF URLs may not access private or local networks.")
+    return url
+
+
+class PublicHttpsRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        validate_public_pdf_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def download_pdf(source, game, progress=None, force=False, require_public_https=False):
     url = source["url"]
     target = rules_pdf_path(game)
+    if force:
+        target.unlink(missing_ok=True)
     if target.exists() and target.stat().st_size > 0:
         return target
 
@@ -575,16 +602,23 @@ def download_pdf(source, game, progress=None):
         url,
         headers={"User-Agent": "BoardGameRulesWizardLocal/0.1"},
     )
-    with urllib.request.urlopen(request, timeout=30) as response:
+    if require_public_https:
+        validate_public_pdf_url(url)
+        response_context = urllib.request.build_opener(PublicHttpsRedirectHandler()).open(request, timeout=30)
+    else:
+        response_context = urllib.request.urlopen(request, timeout=30)
+    with response_context as response:
         content_type = response.headers.get("Content-Type", "")
         if "pdf" not in content_type.lower():
+            if require_public_https:
+                raise ValueError(f"Imported URL is not a PDF response: {content_type}")
             fallback_urls = [
                 candidate for candidate in extract_pdf_links(url, game)
                 if candidate != url
             ]
             if fallback_urls:
                 return download_pdf(
-                    {**source, "url": fallback_urls[0]}, game, progress=progress,
+                    {**source, "url": fallback_urls[0]}, game, progress=progress, force=force, require_public_https=require_public_https,
                 )
             raise ValueError(f"Source is not a PDF response: {content_type}")
         expected = int(response.headers.get("Content-Length") or 0)

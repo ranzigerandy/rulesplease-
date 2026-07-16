@@ -19,7 +19,10 @@ import {
   CircleAlert,
   Dices,
   ExternalLink,
+  FileText,
+  FileUp,
   LibraryBig,
+  Link2,
   LoaderCircle,
   MessageSquareQuote,
   Plus,
@@ -32,7 +35,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast, Toaster } from "sonner";
 
 type AppView = "home" | "new-chat" | "rulebooks" | "settings";
@@ -46,6 +49,8 @@ type GameSearchResult = {
   users?: number;
   expansion?: boolean;
 };
+
+type ManualRulebookInput = { file?: File; url?: string };
 
 type LibraryRow = {
   _id: Id<"libraryGames">;
@@ -108,6 +113,8 @@ function WorkspaceContent() {
   const { user } = useUser();
   const library = useQuery(api.library.list) as LibraryRow[] | undefined;
   const addGame = useMutation(api.library.add);
+  const addManualRulebook = useMutation(api.library.addManualRulebook);
+  const generateRulebookUploadUrl = useMutation(api.library.generateRulebookUploadUrl);
   const reportWrongRulebook = useMutation(api.library.reportWrongRulebook);
   const approveRulebook = useMutation(api.library.approveRulebook);
   const getOrCreateThread = useMutation(api.chat.getOrCreateThread);
@@ -215,6 +222,43 @@ function WorkspaceContent() {
     });
     openChat(id);
     toast.success(`${game.name} added`);
+  }
+
+  async function importRulebook(game: GameSearchResult, input: ManualRulebookInput) {
+    let sourceStorageId: Id<"_storage"> | undefined;
+    if (input.file) {
+      if (input.file.size > 95 * 1024 * 1024) throw new Error("PDF files are limited to 95 MB");
+      const header = await input.file.slice(0, 5).text();
+      if (header !== "%PDF-") throw new Error("This file does not contain a valid PDF header");
+      const uploadUrl = await generateRulebookUploadUrl();
+      const response = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/pdf" },
+        body: input.file,
+      });
+      if (!response.ok) throw new Error("The PDF upload failed");
+      const uploaded = await response.json() as { storageId?: Id<"_storage"> };
+      if (!uploaded.storageId) throw new Error("The PDF upload did not return a storage ID");
+      sourceStorageId = uploaded.storageId;
+    }
+    const id = await addManualRulebook({
+      game: {
+        bggId: game.id,
+        name: game.name,
+        isExpansion: Boolean(game.expansion),
+        ...(game.year !== undefined ? { year: game.year } : {}),
+        ...(game.rank !== undefined ? { rank: game.rank } : {}),
+        ...(game.average !== undefined ? { average: game.average } : {}),
+        ...(game.users !== undefined ? { usersRated: game.users } : {}),
+      },
+      ...(input.url ? { sourceUrl: input.url.trim() } : {}),
+      ...(sourceStorageId ? { sourceStorageId } : {}),
+      ...(input.file ? { fileName: input.file.name } : {}),
+    });
+    openChat(id);
+    toast.success("Rulebook imported", {
+      description: "The worker will verify it before the chat opens.",
+    });
   }
 
   async function submitQuestion() {
@@ -329,6 +373,7 @@ function WorkspaceContent() {
               onBack={() => openView("home")}
               onSelect={openChat}
               onAdd={addSearchResult}
+              onImport={importRulebook}
             />
           ) : view === "settings" ? (
             <SettingsWorkspace
@@ -722,7 +767,8 @@ function RecentChatCard({ row, onSelect }: { row: LibraryRow; onSelect: (id: Id<
   );
 }
 
-function NewChatWorkspace({ library, query, setQuery, results, searching, runSearch, onBack, onSelect, onAdd }: { library: LibraryRow[]; query: string; setQuery: (value: string) => void; results: GameSearchResult[]; searching: boolean; runSearch: () => Promise<void>; onBack: () => void; onSelect: (id: Id<"libraryGames">) => void; onAdd: (game: GameSearchResult) => Promise<void> }) {
+function NewChatWorkspace({ library, query, setQuery, results, searching, runSearch, onBack, onSelect, onAdd, onImport }: { library: LibraryRow[]; query: string; setQuery: (value: string) => void; results: GameSearchResult[]; searching: boolean; runSearch: () => Promise<void>; onBack: () => void; onSelect: (id: Id<"libraryGames">) => void; onAdd: (game: GameSearchResult) => Promise<void>; onImport: (game: GameSearchResult, input: ManualRulebookInput) => Promise<void> }) {
+  const [importGame, setImportGame] = useState<GameSearchResult | null>(null);
   return (
     <div className="subscreen">
       <ScreenHeader title="New rules chat" onBack={onBack} />
@@ -739,12 +785,15 @@ function NewChatWorkspace({ library, query, setQuery, results, searching, runSea
         </form>
         {results.length > 0 && (
           <section className="catalog-results">
-            <h2>Search results</h2>
+            <div className="catalog-results-heading"><h2>Search results</h2><span><FileUp />Import PDF</span></div>
             {results.map((game) => (
               <article key={game.id}>
                 <SearchResultCover game={game} />
                 <span><strong>{game.name}</strong><small>{game.year ?? "Year unknown"}{game.rank ? ` · BGG rank ${game.rank}` : ""}</small></span>
-                <Button variant="outline" aria-label={`Add ${game.name}`} onClick={() => void onAdd(game)}><Plus /></Button>
+                <div className="catalog-result-actions">
+                  <Button variant="outline" aria-label={`Import a rulebook for ${game.name}`} onClick={() => setImportGame(game)}><FileUp /></Button>
+                  <Button variant="outline" aria-label={`Add ${game.name}`} onClick={() => void onAdd(game)}><Plus /></Button>
+                </div>
               </article>
             ))}
           </section>
@@ -754,6 +803,73 @@ function NewChatWorkspace({ library, query, setQuery, results, searching, runSea
           {library.map((row) => <RecentChatCard key={row._id} row={row} onSelect={onSelect} />)}
         </section>
       </div>
+      {importGame && (
+        <RulebookImportSheet
+          game={importGame}
+          onClose={() => setImportGame(null)}
+          onImport={async (input) => {
+            await onImport(importGame, input);
+            setImportGame(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function RulebookImportSheet({ game, onClose, onImport }: { game: GameSearchResult; onClose: () => void; onImport: (input: ManualRulebookInput) => Promise<void> }) {
+  const [method, setMethod] = useState<"file" | "url">("file");
+  const [file, setFile] = useState<File | null>(null);
+  const [url, setUrl] = useState("");
+  const [importing, setImporting] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (method === "file" && !file) return;
+    if (method === "url" && !url.trim()) return;
+    setImporting(true);
+    try {
+      await onImport(method === "file" ? { file: file! } : { url: url.trim() });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The rulebook could not be imported");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  return (
+    <div className="source-backdrop" role="presentation" onMouseDown={importing ? undefined : onClose}>
+      <section className="source-sheet rulebook-import-sheet" role="dialog" aria-modal="true" aria-label={`Import a rulebook for ${game.name}`} onMouseDown={(event) => event.stopPropagation()}>
+        <header>
+          <div><span>YOUR RULEBOOK</span><h2>Import PDF</h2></div>
+          <button type="button" disabled={importing} onClick={onClose} aria-label="Close PDF import"><X /></button>
+        </header>
+        <form className="rulebook-import-content" onSubmit={(event) => void submit(event)}>
+          <div className="import-game-row"><SearchResultCover game={game} /><span><strong>{game.name}</strong><small>{game.year ?? "Year unknown"} · Base game</small></span></div>
+          <div className="import-method-tabs" role="tablist" aria-label="PDF import method">
+            <button type="button" role="tab" aria-selected={method === "file"} className={method === "file" ? "active" : ""} onClick={() => setMethod("file")}><FileUp />PDF file</button>
+            <button type="button" role="tab" aria-selected={method === "url"} className={method === "url" ? "active" : ""} onClick={() => setMethod("url")}><Link2 />PDF link</button>
+          </div>
+          {method === "file" ? (
+            <div className="import-file-panel">
+              <input ref={fileInput} type="file" accept="application/pdf,.pdf" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+              <button type="button" className="import-file-picker" onClick={() => fileInput.current?.click()}>
+                {file ? <FileText /> : <FileUp />}
+                <span><strong>{file?.name ?? "Choose a PDF"}</strong><small>{file ? `${Math.max(1, Math.round(file.size / 1024))} KB selected` : "Select a rulebook · up to 95 MB"}</small></span>
+                <ChevronRight />
+              </button>
+            </div>
+          ) : (
+            <label className="import-url-field"><span>Direct PDF URL</span><div><Link2 /><Input type="url" inputMode="url" autoCapitalize="none" autoCorrect="off" placeholder="https://example.com/rulebook.pdf" value={url} onChange={(event) => setUrl(event.target.value)} /></div></label>
+          )}
+          <p className="import-safety-note"><ShieldCheck />We verify the game and edition before the chat opens.</p>
+          <Button className="import-submit" disabled={importing || (method === "file" ? !file : !url.trim())}>
+            {importing ? <LoaderCircle className="spin" /> : <FileUp />}
+            {importing ? "Importing…" : "Import & verify"}
+          </Button>
+        </form>
+      </section>
     </div>
   );
 }

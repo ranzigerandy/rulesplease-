@@ -52,11 +52,23 @@ export const claim = internalMutation({
       updatedAt: now,
     });
     const libraryGame = await ctx.db.get(job.libraryGameId);
+    const uploadedSourceUrl = job.sourceStorageId
+      ? await ctx.storage.getUrl(job.sourceStorageId)
+      : null;
+    const manualSourceUrl = uploadedSourceUrl ?? job.sourceUrl ?? null;
     return {
       job: { ...job, status: "processing", leaseToken, workerId },
       game: await ctx.db.get(job.gameId),
       libraryGame,
       rulebook: job.rulebookId ? await ctx.db.get(job.rulebookId) : null,
+      manualSource: manualSourceUrl
+        ? {
+            url: manualSourceUrl,
+            label: job.sourceLabel ?? "Imported rulebook PDF",
+            language: "en",
+            confidence: "user-import",
+          }
+        : null,
     };
   },
 });

@@ -77,6 +77,12 @@ class RulebookIdentityTests(unittest.TestCase):
 
         self.assertEqual(candidates, {})
 
+    def test_manual_pdf_urls_reject_local_networks_and_plain_http(self):
+        with self.assertRaisesRegex(ValueError, "public HTTPS"):
+            app_server.validate_public_pdf_url("http://example.com/rules.pdf")
+        with self.assertRaisesRegex(ValueError, "private or local"):
+            app_server.validate_public_pdf_url("https://127.0.0.1/rules.pdf")
+
 
 if __name__ == "__main__":
     unittest.main()

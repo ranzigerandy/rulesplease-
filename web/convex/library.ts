@@ -166,6 +166,147 @@ export const add = mutation({
   },
 });
 
+export const generateRulebookUploadUrl = mutation({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx) => {
+    await requireUserId(ctx);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const addManualRulebook = mutation({
+  args: {
+    game: gameInput,
+    sourceUrl: v.optional(v.string()),
+    sourceStorageId: v.optional(v.id("_storage")),
+    fileName: v.optional(v.string()),
+  },
+  returns: v.id("libraryGames"),
+  handler: async (ctx, { game: input, sourceUrl, sourceStorageId, fileName }) => {
+    const userId = await requireUserId(ctx);
+    if ((sourceUrl ? 1 : 0) + (sourceStorageId ? 1 : 0) !== 1) {
+      throw new Error("Choose one PDF file or one PDF URL");
+    }
+    let normalizedUrl: string | undefined;
+    if (sourceUrl) {
+      if (sourceUrl.length > 2_048) throw new Error("The PDF URL is too long");
+      try {
+        const parsed = new URL(sourceUrl);
+        if (parsed.protocol !== "https:") {
+          throw new Error("Unsupported protocol");
+        }
+        normalizedUrl = parsed.toString();
+      } catch {
+        throw new Error("Enter a valid public HTTPS PDF URL");
+      }
+    }
+    if (sourceStorageId) {
+      const storedFile = await ctx.db.system.get(sourceStorageId);
+      if (!storedFile) throw new Error("The uploaded PDF could not be found");
+      if (storedFile.contentType && storedFile.contentType !== "application/pdf") {
+        throw new Error("The uploaded file is not a PDF");
+      }
+    }
+
+    const now = Date.now();
+    const existingGame = await ctx.db
+      .query("games")
+      .withIndex("by_bgg_id", (q) => q.eq("bggId", input.bggId))
+      .unique();
+    let gameId;
+    if (existingGame) {
+      await ctx.db.patch(existingGame._id, { ...input, updatedAt: now });
+      gameId = existingGame._id;
+    } else {
+      gameId = await ctx.db.insert("games", {
+        ...input,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    let libraryGame = await ctx.db
+      .query("libraryGames")
+      .withIndex("by_user_and_game", (q) =>
+        q.eq("userId", userId).eq("gameId", gameId),
+      )
+      .unique();
+    if (libraryGame) {
+      const jobs = await ctx.db
+        .query("ingestionJobs")
+        .withIndex("by_library_game", (q) => q.eq("libraryGameId", libraryGame!._id))
+        .order("desc")
+        .take(20);
+      if (jobs.some((job) => job.status === "queued" || job.status === "processing")) {
+        throw new Error("Wait for the active rulebook job before importing another PDF");
+      }
+      const rulebooks = await ctx.db
+        .query("rulebooks")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .order("desc")
+        .take(20);
+      for (const rulebook of rulebooks.filter((item) => item.status === "ready")) {
+        await ctx.db.patch(rulebook._id, { status: "failed", updatedAt: now });
+        await ctx.db.patch(rulebook.sourceId, { reviewStatus: "rejected" });
+      }
+      if (rulebooks.some((item) => item.status === "ready")) {
+        const replacementThread = await rulesAgent.createThread(ctx, {
+          userId,
+          title: `${input.name} rules`,
+        });
+        await ctx.db.insert("chatThreads", {
+          userId,
+          libraryGameId: libraryGame._id,
+          agentThreadId: replacementThread.threadId,
+          title: `${input.name} rules`,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+      await ctx.db.patch(libraryGame._id, {
+        status: "queued",
+        statusLabel: "Import queued",
+        statusMessage: "Waiting for the worker to verify your imported rulebook.",
+        progress: 0,
+        updatedAt: now,
+      });
+    } else {
+      const libraryGameId = await ctx.db.insert("libraryGames", {
+        userId,
+        gameId,
+        status: "queued",
+        statusLabel: "Import queued",
+        statusMessage: "Waiting for the worker to verify your imported rulebook.",
+        progress: 0,
+        addedAt: now,
+        updatedAt: now,
+      });
+      libraryGame = await ctx.db.get(libraryGameId);
+    }
+    if (!libraryGame) throw new Error("Could not create the library game");
+
+    const safeFileName = fileName?.trim().slice(0, 160);
+    await ctx.db.insert("ingestionJobs", {
+      userId,
+      libraryGameId: libraryGame._id,
+      gameId,
+      status: "queued",
+      phase: "queued",
+      statusMessage: "Waiting to verify your imported rulebook.",
+      progress: 0,
+      attempts: 0,
+      idempotencyKey: `${userId}:${gameId}:manual:${now}`,
+      ...(normalizedUrl ? { sourceUrl: normalizedUrl } : {}),
+      ...(sourceStorageId ? { sourceStorageId } : {}),
+      sourceLabel: safeFileName || `${input.name} imported rulebook PDF`,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return libraryGame._id;
+  },
+});
+
 export const remove = mutation({
   args: { libraryGameId: v.id("libraryGames") },
   returns: v.null(),
