@@ -346,6 +346,52 @@
   .legacy-workspace .question-composer { position: sticky; bottom: 0; width: calc(100% - 60px); min-height: 74px; margin-bottom: 18px; }
 }
 
+/* On wider screens, Rules Please intentionally keeps the phone-first experience. */
+@media (min-width: 901px) {
+  html, body { background: #ececeb; }
+  .rules-app { width: min(430px, 100vw); min-height: 100svh; display: block; margin: 0 auto; padding-bottom: calc(76px + env(safe-area-inset-bottom)); overflow: hidden; background: #fff; box-shadow: 0 0 0 1px rgba(13, 13, 13, .08), 0 20px 56px rgba(13, 13, 13, .13); }
+  .rules-app.is-chat { padding-bottom: 0; }
+  .rules-rail { display: none; }
+  .rules-main { height: auto; min-height: 100svh; overflow: visible; }
+  .home-screen { width: 100%; height: auto; min-height: 100svh; padding: 34px 24px 32px; overflow: visible; }
+  .home-settings { top: 22px; right: 22px; }
+  .home-hero { margin-bottom: 24px; padding-top: 62px; }
+  .home-hero h1 { font-size: 30px; }
+  .home-hero img { width: 142px; height: 142px; }
+  .chat-search { min-height: 62px; border-radius: 20px; }
+  .home-new-chat { min-height: 62px; border-radius: 20px; }
+  .recent-chats { margin-top: 38px; }
+  .recent-chat-card { min-height: 126px; grid-template-columns: 82px minmax(0, 1fr); }
+  .recent-chat-card .game-cover, .recent-chat-card .game-monogram { width: 82px; height: 106px; }
+  .mobile-app-nav { position: fixed; left: 50%; right: auto; bottom: 0; width: min(430px, 100vw); min-height: 76px; display: grid; grid-template-columns: repeat(4, 1fr); padding: 7px 10px calc(7px + env(safe-area-inset-bottom)); transform: translateX(-50%); border-top: 1px solid rgba(13, 13, 13, .10); background: rgba(255,255,255,.96); backdrop-filter: blur(18px); }
+  .mobile-app-nav button { min-width: 0; display: grid; place-items: center; align-content: center; gap: 4px; padding: 0; border: 0; color: #737373; background: transparent; font-size: 11px; font-weight: 500; }
+  .mobile-app-nav button.active { color: #0d0d0d; }
+  .mobile-app-nav svg { width: 24px; height: 24px; }
+  .chat-header { position: sticky; top: 0; z-index: 20; min-height: 78px; grid-template-columns: 48px 56px minmax(0, 1fr) 48px; gap: 12px; padding: 9px 18px; }
+  .chat-header .game-cover, .chat-header .game-monogram { width: 56px; height: 56px; }
+  .chat-header h1 { font-size: 25px; }
+  .round-action { width: 48px; height: 48px; }
+  .chat-layout { height: calc(100svh - 78px); }
+  .message-stream { width: calc(100% - 48px); padding: 30px 0 18px; }
+  .message-bubble { margin-bottom: 34px; font-size: 17px; }
+  .message-bubble.user { max-width: 84%; }
+  .question-composer { width: calc(100% - 32px); min-height: 62px; margin-bottom: calc(14px + env(safe-area-inset-bottom)); padding-left: 20px; }
+  .source-backdrop { place-items: end center; padding: 0; }
+  .source-sheet { width: min(430px, 100vw); max-height: 82svh; border-width: 1px 0 0; border-radius: 24px 24px 0 0; }
+  .source-sheet > header { padding-inline: 20px; }
+  .source-passages { padding-inline: 18px; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+  .citation-row.is-expanded .citation-disclosure { width: 100%; border-radius: 20px; }
+  .inline-source-list { padding: 2px 14px 14px; }
+  .inline-source-card { padding: 0; }
+  .inline-source-card > header { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .subscreen { min-height: 100svh; padding-bottom: 18px; }
+  .screen-header { min-height: 62px; padding: 0 16px; }
+  .subscreen-content { width: calc(100% - 48px); padding: 50px 0 36px; }
+  .new-chat-intro h1 { font-size: 32px; }
+  .settings-content { width: calc(100% - 48px); padding-bottom: 38px; }
+  .rulebooks-content { width: calc(100% - 48px); }
+}
+
 /* Rules Please! production app — faithful to the original refined-minimal UI. */
 .rules-app {
   --app-rail: 360px;
@@ -713,4 +759,54 @@
   .catalog-results article > button { grid-column: 1 / -1; width: 100%; }
   .settings-account { grid-template-columns: 48px minmax(0, 1fr); }
   .settings-account > :last-child { display: none; }
+}
+
+@media (min-width: 901px) {
+  .rules-app { width: min(430px, 100vw); display: block; margin: 0 auto; padding-bottom: 76px; overflow: hidden; box-shadow: 0 0 0 1px rgba(13, 13, 13, .08), 0 20px 56px rgba(13, 13, 13, .13); }
+  .rules-app.is-chat { padding-bottom: 0; }
+  .rules-rail { display: none; }
+  .rules-main { height: auto; min-height: 100svh; overflow: visible; }
+  .home-screen { width: 100%; height: auto; min-height: 100svh; padding: 34px 24px 32px; overflow: visible; }
+  .home-settings { top: 22px; right: 22px; }
+  .home-hero { margin-bottom: 24px; padding-top: 62px; }
+  .home-hero h1 { font-size: 30px; }
+  .home-hero img { width: 142px; height: 142px; }
+  .chat-search, .home-new-chat { min-height: 62px; border-radius: 20px; }
+  .recent-chats { margin-top: 38px; }
+  .recent-chat-card { min-height: 126px; grid-template-columns: 82px minmax(0, 1fr); }
+  .recent-chat-card .game-cover, .recent-chat-card .game-monogram { width: 82px; height: 106px; }
+  .mobile-app-nav { position: fixed; left: 50%; right: auto; bottom: 0; width: min(430px, 100vw); min-height: 76px; display: grid; grid-template-columns: repeat(4, 1fr); padding: 7px 10px; transform: translateX(-50%); border-top: 1px solid rgba(13, 13, 13, .10); background: rgba(255,255,255,.96); backdrop-filter: blur(18px); }
+  .mobile-app-nav button { min-width: 0; display: grid; place-items: center; align-content: center; gap: 4px; padding: 0; border: 0; color: #737373; background: transparent; font-size: 11px; font-weight: 500; }
+  .mobile-app-nav button.active { color: #0d0d0d; }
+  .mobile-app-nav svg { width: 24px; height: 24px; }
+  .chat-header { position: sticky; top: 0; z-index: 20; min-height: 78px; grid-template-columns: 48px 56px minmax(0, 1fr) 48px; gap: 12px; padding: 9px 18px; }
+  .chat-header .game-cover, .chat-header .game-monogram { width: 56px; height: 56px; }
+  .chat-header h1 { font-size: 25px; }
+  .round-action { width: 48px; height: 48px; }
+  .chat-layout { height: calc(100svh - 78px); }
+  .message-stream { width: calc(100% - 48px); padding: 30px 0 18px; }
+  .message-bubble { margin-bottom: 34px; font-size: 17px; }
+  .message-bubble.user { max-width: 84%; }
+  .question-composer { width: calc(100% - 32px); min-height: 62px; margin-bottom: 14px; padding-left: 20px; }
+  .source-backdrop { place-items: end center; padding: 0; }
+  .source-sheet { width: min(430px, 100vw); max-height: 82svh; border-width: 1px 0 0; border-radius: 24px 24px 0 0; }
+  .citation-row.is-expanded .citation-disclosure { width: 100%; border-radius: 20px; }
+  .inline-source-list { padding: 2px 14px 14px; }
+  .inline-source-card { padding: 0; }
+  .inline-source-card > header { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .subscreen { min-height: 100svh; padding-bottom: 18px; }
+  .screen-header { min-height: 62px; padding: 0 16px; }
+  .subscreen-content { width: calc(100% - 48px); padding: 50px 0 36px; }
+  .new-chat-intro h1 { font-size: 32px; }
+  .settings-content, .rulebooks-content { width: calc(100% - 48px); padding-bottom: 38px; }
+  .rulebook-viewer { left: 50%; right: auto; width: min(430px, 100vw); transform: translateX(-50%); grid-template-rows: 64px minmax(0, 1fr) 62px; }
+  .rulebook-viewer-header { padding: 0 12px; }
+  .rulebook-viewer-header > a { width: 40px; min-height: 40px; justify-content: center; padding: 0; font-size: 0; }
+  .rulebook-viewer-header > a svg { width: 17px; height: 17px; }
+  .rulebook-viewer-body { display: block; overflow: auto; }
+  .rulebook-focus-card { position: sticky; top: 12px; z-index: 4; margin: 12px 12px 0; padding: 14px 16px; border-radius: 15px; }
+  .rulebook-focus-card blockquote { display: -webkit-box; overflow: hidden; font-size: 13px; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+  .rulebook-page-scroll { overflow: visible; padding: 14px 12px 24px; }
+  .rulebook-page-nav { gap: 6px; padding: 0 8px; }
+  .rulebook-page-nav button { min-height: 38px; padding: 0 10px; font-size: 11px; }
 }
