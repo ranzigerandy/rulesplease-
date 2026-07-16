@@ -744,7 +744,7 @@ function NewChatWorkspace({ library, query, setQuery, results, searching, runSea
               <article key={game.id}>
                 <SearchResultCover game={game} />
                 <span><strong>{game.name}</strong><small>{game.year ?? "Year unknown"}{game.rank ? ` · BGG rank ${game.rank}` : ""}</small></span>
-                <Button variant="outline" onClick={() => void onAdd(game)}>Add</Button>
+                <Button variant="outline" aria-label={`Add ${game.name}`} onClick={() => void onAdd(game)}><Plus /></Button>
               </article>
             ))}
           </section>

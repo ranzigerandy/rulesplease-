@@ -455,8 +455,8 @@
 .catalog-results .game-cover, .catalog-results .game-monogram { width: 46px; height: 56px; border-radius: 8px; }
 .catalog-results strong { font-size: 15px; font-weight: 590; }
 .catalog-results small { font-size: 12px; }
-.catalog-results article > button { width: 36px; min-width: 36px; height: 36px; overflow: hidden; padding: 0; border-radius: 50%; font-size: 0; }
-.catalog-results article > button::after { color: #111; font-size: 22px; line-height: 1; content: "+"; }
+.catalog-results article > button { width: 36px; min-width: 36px; height: 36px; overflow: hidden; padding: 0; border-radius: 50%; }
+.catalog-results article > button svg { width: 18px; height: 18px; }
 .recent-chats.compact { margin-top: 0; }
 
 .subscreen:has(.settings-content) { background: #f2f2f7; }
@@ -1074,8 +1074,8 @@
 .catalog-results h2, .recent-chats.compact h2 { color: #777; font-size: 13px; }
 .catalog-results article { min-height: 72px; grid-template-columns: 46px minmax(0,1fr) 38px; gap: 12px; padding: 8px 4px; border: 0; border-bottom: 1px solid rgba(13,13,13,.07); border-radius: 0; }
 .catalog-results .game-cover, .catalog-results .game-monogram { width: 46px; height: 56px; border-radius: 8px; }
-.catalog-results article > button { width: 36px; min-width: 36px; height: 36px; overflow: hidden; padding: 0; border-radius: 50%; font-size: 0; }
-.catalog-results article > button::after { font-size: 22px; content: "+"; }
+.catalog-results article > button { grid-column: auto; width: 36px; min-width: 36px; height: 36px; overflow: hidden; padding: 0; border-radius: 50%; }
+.catalog-results article > button svg { width: 18px; height: 18px; }
 
 .subscreen:has(.settings-content) { background: #f2f2f7; }
 .subscreen:has(.settings-content) .screen-header { background: rgba(242,242,247,.9); }
