@@ -61,6 +61,12 @@ RULEBOOK_SOURCES = {
         "label": "A Wild Venture English rulebook PDF",
         "confidence": "medium",
     },
+    415147: {
+        "url": "https://gamers-hq.de/media/pdf/4b/aa/0e/Spectacular_Rules_Compressed.pdf",
+        "label": "Spectacular base-game rulebook (Chilifox Games via Gamer's HQ)",
+        "confidence": "verified",
+        "edition": "base game",
+    },
 }
 
 EDITION_MARKERS = (
@@ -85,6 +91,29 @@ OFFICIAL_RULEBOOK_HOSTS = (
     "hans-im-glueck.de",
     "images.zmangames.com",
     "zmangames.com",
+)
+
+# A title match alone is not enough for broad or reused game titles. These terms
+# are strong evidence that a PDF belongs to a different kind of quiz or manual.
+RULEBOOK_CONTENT_MISMATCHES = (
+    "bible quiz",
+    "quizmaster",
+    "quiz officials",
+    "pqa dress standards",
+    "scripture memory",
+)
+
+BOARD_GAME_CONTENT_SIGNALS = (
+    "components",
+    "game board",
+    "player board",
+    "tiles",
+    "cards",
+    "dice",
+    "setup",
+    "round",
+    "scoring",
+    "victory points",
 )
 
 GAMES_BY_ID = {}
@@ -160,6 +189,17 @@ def validate_rulebook_identity(game, candidate, pages):
     canonical = normalize(game.get("name"))
     text = normalize(first_pages)
     url_text = normalize(url_evidence)
+    content_mismatches = [
+        marker for marker in RULEBOOK_CONTENT_MISMATCHES if marker in text
+    ]
+    if content_mismatches:
+        return {
+            "approved": False,
+            "reviewRequired": False,
+            "edition": candidate.get("edition", "base game"),
+            "confidence": "rejected",
+            "reason": f"Content mismatch: found {', '.join(content_mismatches)}.",
+        }
     title_terms = [term for term in canonical.split() if len(term) > 2]
     exact_title = bool(canonical and re.search(rf"\b{re.escape(canonical)}\b", text))
     title_hits = sum(1 for term in title_terms if re.search(rf"\b{re.escape(term)}\b", text))
@@ -168,6 +208,9 @@ def validate_rulebook_identity(game, candidate, pages):
         1
         for phrase in ("game", "player", "rules", "setup", "points", "turn")
         if re.search(rf"\b{phrase}\b", text)
+    )
+    board_game_signals = sum(
+        1 for phrase in BOARD_GAME_CONTENT_SIGNALS if phrase in text
     )
     host = urllib.parse.urlparse(candidate.get("url", "")).netloc.lower()
 
@@ -185,7 +228,13 @@ def validate_rulebook_identity(game, candidate, pages):
     if english_signals >= 3:
         score += 10
 
-    approved = score >= 65 and english_signals >= 2
+    # One-word titles are prone to collisions. A discovered PDF must prove it
+    # is a board-game manual, rather than merely containing the same title.
+    generic_title_needs_context = len(title_terms) == 1 and candidate.get("confidence") != "verified"
+    has_board_game_context = board_game_signals >= 2
+    approved = score >= 65 and english_signals >= 2 and (
+        not generic_title_needs_context or has_board_game_context
+    )
     return {
         "approved": approved,
         "reviewRequired": not approved,
@@ -194,7 +243,11 @@ def validate_rulebook_identity(game, candidate, pages):
         "reason": (
             "Title, edition, and language match the selected game."
             if approved
-            else "The PDF title, edition, or language could not be verified with enough confidence."
+            else (
+                "A generic game title needs clearer board-game evidence in the PDF."
+                if generic_title_needs_context and not has_board_game_context
+                else "The PDF title, edition, or language could not be verified with enough confidence."
+            )
         ),
     }
 

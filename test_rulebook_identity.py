@@ -39,6 +39,33 @@ class RulebookIdentityTests(unittest.TestCase):
 
         self.assertLess(score, 0)
 
+    def test_rejects_a_same_title_bible_quiz_pdf(self):
+        game = {"id": 415147, "name": "Spectacular", "year": 2024}
+        verdict = app_server.validate_rulebook_identity(
+            game,
+            {
+                "url": "https://example.com/Spectacular-Rules.pdf",
+                "label": "Spectacular rules",
+                "confidence": "auto",
+            },
+            [{"text": "Spectacular Rules. Quiz Officials. The quizmaster asks Bible quiz questions."}],
+        )
+
+        self.assertFalse(verdict["approved"])
+        self.assertFalse(verdict["reviewRequired"])
+        self.assertIn("content mismatch", verdict["reason"].lower())
+
+    def test_approves_the_curated_spectacular_board_game_rulebook(self):
+        game = {"id": 415147, "name": "Spectacular", "year": 2024}
+        verdict = app_server.validate_rulebook_identity(
+            game,
+            app_server.RULEBOOK_SOURCES[415147],
+            [{"text": "Spectacular by Chilifox Games. Components include animal tiles, dice, player boards, and scoring rules."}],
+        )
+
+        self.assertTrue(verdict["approved"])
+        self.assertEqual(verdict["edition"], "base game")
+
 
 if __name__ == "__main__":
     unittest.main()
