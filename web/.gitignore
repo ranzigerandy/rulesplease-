@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# The production search fallback bundles this read-only BGG catalogue.
+!/data/
+!/data/catalog.csv
