@@ -42,8 +42,10 @@ export const list = query({
           .order("desc")
           .take(20);
         const readyRulebook = rulebooks.find((rulebook) => rulebook.status === "ready") ?? null;
-        const rulebookSource = readyRulebook
-          ? await ctx.db.get(readyRulebook.sourceId)
+        const reviewRulebook = rulebooks.find((rulebook) => rulebook.status === "review_required") ?? null;
+        const activeRulebook = readyRulebook ?? reviewRulebook;
+        const rulebookSource = activeRulebook
+          ? await ctx.db.get(activeRulebook.sourceId)
           : null;
         const isActive =
           job && (job.status === "queued" || job.status === "processing");
@@ -63,7 +65,7 @@ export const list = query({
           progress: isActive ? job.progress : libraryGame.progress,
           game,
           job,
-          rulebook: readyRulebook,
+          rulebook: activeRulebook,
           rulebookSource,
         };
       }),
@@ -266,6 +268,45 @@ export const reportWrongRulebook = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    return null;
+  },
+});
+
+export const approveRulebook = mutation({
+  args: { libraryGameId: v.id("libraryGames") },
+  returns: v.null(),
+  handler: async (ctx, { libraryGameId }) => {
+    const userId = await requireUserId(ctx);
+    const libraryGame = await ctx.db.get(libraryGameId);
+    if (!libraryGame || libraryGame.userId !== userId) {
+      throw new Error("Library game not found");
+    }
+    const rulebooks = await ctx.db
+      .query("rulebooks")
+      .withIndex("by_game", (q) => q.eq("gameId", libraryGame.gameId))
+      .order("desc")
+      .take(20);
+    const rulebook = rulebooks.find((item) => item.status === "review_required");
+    if (!rulebook) throw new Error("There is no rulebook awaiting approval");
+    const source = await ctx.db.get(rulebook.sourceId);
+    if (!source) throw new Error("Rulebook source not found");
+
+    const now = Date.now();
+    await ctx.db.patch(source._id, { reviewStatus: "approved" });
+    await ctx.db.patch(rulebook._id, { status: "ready", updatedAt: now });
+    const libraryGames = await ctx.db
+      .query("libraryGames")
+      .withIndex("by_game_and_status", (q) => q.eq("gameId", libraryGame.gameId))
+      .take(500);
+    for (const game of libraryGames) {
+      await ctx.db.patch(game._id, {
+        status: "ready",
+        statusLabel: "Ready",
+        statusMessage: "The approved rulebook is ready for questions.",
+        progress: 100,
+        updatedAt: now,
+      });
+    }
     return null;
   },
 });

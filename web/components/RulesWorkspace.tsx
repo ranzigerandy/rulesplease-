@@ -113,6 +113,7 @@ function WorkspaceContent() {
   const library = useQuery(api.library.list) as LibraryRow[] | undefined;
   const addGame = useMutation(api.library.add);
   const reportWrongRulebook = useMutation(api.library.reportWrongRulebook);
+  const approveRulebook = useMutation(api.library.approveRulebook);
   const getOrCreateThread = useMutation(api.chat.getOrCreateThread);
   const ask = useAction(api.chat.ask);
   const [view, setView] = useState<AppView>("home");
@@ -125,6 +126,7 @@ function WorkspaceContent() {
   const [asking, setAsking] = useState(false);
   const [showRulebookInfo, setShowRulebookInfo] = useState(false);
   const [replacingRulebook, setReplacingRulebook] = useState(false);
+  const [approvingRulebook, setApprovingRulebook] = useState(false);
 
   const selected = useMemo(
     () => library?.find((row) => row._id === selectedId) ?? null,
@@ -170,6 +172,21 @@ function WorkspaceContent() {
       toast.error(error instanceof Error ? error.message : "The rulebook could not be replaced");
     } finally {
       setReplacingRulebook(false);
+    }
+  }
+
+  async function approveSelectedRulebook() {
+    if (!selected) return;
+    setApprovingRulebook(true);
+    try {
+      await approveRulebook({ libraryGameId: selected._id });
+      toast.success("Rulebook approved", {
+        description: "You can now ask questions about this game.",
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The rulebook could not be approved");
+    } finally {
+      setApprovingRulebook(false);
     }
   }
 
@@ -260,7 +277,16 @@ function WorkspaceContent() {
                 <h1>{selected.game?.name}</h1>
                 <button className="round-action chat-info" aria-label="About this rulebook" onClick={() => setShowRulebookInfo(true)}><Info /></button>
               </header>
-              {selected.status !== "ready" ? <ProcessingPanel game={selected} /> : (
+              {selected.status === "review_required" && selected.rulebookSource ? (
+                <RulebookApproval
+                  game={selected.game}
+                  source={selected.rulebookSource}
+                  approving={approvingRulebook}
+                  replacing={replacingRulebook}
+                  onApprove={() => void approveSelectedRulebook()}
+                  onReplace={() => void replaceWrongRulebook()}
+                />
+              ) : selected.status !== "ready" ? <ProcessingPanel game={selected} /> : (
                 <ChatPanel
                   gameName={selected.game?.name ?? "this game"}
                   messages={messagesResult?.page ?? []}
@@ -323,6 +349,45 @@ function WorkspaceContent() {
         )}
       </main>
     </>
+  );
+}
+
+function RulebookApproval({ game, source, approving, replacing, onApprove, onReplace }: {
+  game: LibraryRow["game"];
+  source: NonNullable<LibraryRow["rulebookSource"]>;
+  approving: boolean;
+  replacing: boolean;
+  onApprove: () => void;
+  onReplace: () => void;
+}) {
+  const gameName = game?.name ?? "This game";
+  return (
+    <section className="rulebook-approval" aria-labelledby="rulebook-approval-title">
+      <div className="approval-mark"><ShieldCheck /></div>
+      <span className="approval-eyebrow">Before you start</span>
+      <h2 id="rulebook-approval-title">Is this the right rulebook?</h2>
+      <p>Check the game and edition once. We will only open the chat after your approval.</p>
+      <div className="approval-source-card">
+        <GameCover game={game} />
+        <div>
+          <strong>{gameName}</strong>
+          <span>{source.edition ?? "Base game"} · {source.language.toUpperCase()}</span>
+          <small>{source.label}</small>
+        </div>
+      </div>
+      <a className="approval-preview" href={source.url} target="_blank" rel="noreferrer">Preview rulebook <ExternalLink /></a>
+      <div className="approval-actions">
+        <button type="button" className="approval-confirm" disabled={approving || replacing} onClick={onApprove}>
+          {approving ? <LoaderCircle className="spin" /> : <ShieldCheck />}
+          {approving ? "Approving…" : "Yes, this is the right rulebook"}
+        </button>
+        <button type="button" className="approval-reject" disabled={approving || replacing} onClick={onReplace}>
+          {replacing ? <LoaderCircle className="spin" /> : <RefreshCw />}
+          {replacing ? "Looking again…" : "No, find another rulebook"}
+        </button>
+      </div>
+      <small className="approval-note">This protects your answers from being based on the wrong game or edition.</small>
+    </section>
   );
 }
 

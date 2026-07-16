@@ -112,14 +112,18 @@ export const prepareRulebook = internalMutation({
         q.eq("gameId", job.gameId).eq("url", input.url),
       )
       .unique();
+    const reviewStatus = source?.reviewStatus === "approved"
+      ? "approved"
+      : "review_required";
     if (source) {
-      await ctx.db.patch(source._id, input);
+      await ctx.db.patch(source._id, { ...input, reviewStatus });
     }
     const sourceId = source
       ? source._id
       : await ctx.db.insert("rulebookSources", {
           gameId: job.gameId,
           ...input,
+          reviewStatus,
           legalStatus: "unknown",
           discoveredAt: now,
         });
@@ -216,18 +220,16 @@ export const complete = internalMutation({
     if (!job?.rulebookId) throw new Error("Rulebook has not been prepared");
     const rulebook = await ctx.db.get(job.rulebookId);
     const source = rulebook ? await ctx.db.get(rulebook.sourceId) : null;
-    if (!rulebook || source?.reviewStatus !== "approved") {
-      throw new Error("Rulebook source has not passed identity review");
-    }
     const now = Date.now();
+    const awaitingApproval = !rulebook || source?.reviewStatus !== "approved";
     await ctx.db.patch(job.rulebookId, {
       ...result,
-      status: "ready",
+      status: awaitingApproval ? "review_required" : "ready",
       updatedAt: now,
     });
     await ctx.db.patch(jobId, {
       status: "completed",
-      phase: "ready",
+      phase: awaitingApproval ? "review_required" : "ready",
       progress: 100,
       leaseToken: undefined,
       leaseExpiresAt: undefined,
@@ -240,9 +242,11 @@ export const complete = internalMutation({
       .take(500);
     for (const libraryGame of libraries) {
       await ctx.db.patch(libraryGame._id, {
-        status: "ready",
-        statusLabel: "Ready",
-        statusMessage: "The rulebook is indexed and ready for questions.",
+        status: awaitingApproval ? "review_required" : "ready",
+        statusLabel: awaitingApproval ? "Review rulebook" : "Ready",
+        statusMessage: awaitingApproval
+          ? "Check this rulebook before opening the chat."
+          : "The rulebook is indexed and ready for questions.",
         progress: 100,
         updatedAt: now,
       });

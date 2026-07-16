@@ -8,7 +8,7 @@ import schema from "./schema";
 const modules = import.meta.glob("./**/*.ts");
 
 describe("ingestion worker leases", () => {
-  test("claims once, rejects stale leases, deduplicates chunks, and completes", async () => {
+  test("claims once, rejects stale leases, deduplicates chunks, and sends new sources to review", async () => {
     const t = convexTest(schema, modules);
     const ids = await t.run(async (ctx) => {
       const now = Date.now();
@@ -123,7 +123,7 @@ describe("ingestion worker leases", () => {
       rulebook: await ctx.db.get(rulebookId),
     }));
     expect(state.job?.status).toBe("completed");
-    expect(state.library?.status).toBe("ready");
-    expect(state.rulebook?.status).toBe("ready");
+    expect(state.library?.status).toBe("review_required");
+    expect(state.rulebook?.status).toBe("review_required");
   });
 });

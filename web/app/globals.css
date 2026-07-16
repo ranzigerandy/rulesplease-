@@ -616,6 +616,30 @@
 .progress-track { width: min(500px, 80vw); height: 8px; overflow: hidden; border-radius: 99px; background: #ececec; }
 .progress-track span { display: block; height: 100%; background: #10a37f; transition: width 300ms ease; }
 
+.rulebook-approval { min-height: calc(100svh - 76px); display: grid; justify-items: center; align-content: center; gap: 13px; width: min(440px, calc(100% - 48px)); margin: 0 auto; padding: 34px 0; text-align: center; }
+.approval-mark { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 50%; color: #087a60; background: #e5f6ef; }
+.approval-mark svg { width: 27px; height: 27px; }
+.approval-eyebrow { color: #087a60; font-size: 12px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.rulebook-approval h2 { margin: -3px 0 0; font-size: 28px; line-height: 1.08; font-weight: 650; }
+.rulebook-approval > p { max-width: 360px; margin: 0 0 5px; color: #6f6f6f; font-size: 15px; line-height: 1.5; }
+.approval-source-card { width: 100%; display: grid; grid-template-columns: 74px minmax(0, 1fr); align-items: center; gap: 14px; padding: 11px; border: 1px solid rgba(13, 13, 13, .12); border-radius: 18px; background: #fff; text-align: left; box-shadow: 0 8px 24px rgba(13, 13, 13, .05); }
+.approval-source-card .game-cover, .approval-source-card .game-monogram { width: 74px; height: 92px; border-radius: 11px; }
+.approval-source-card > div { min-width: 0; display: grid; gap: 5px; }
+.approval-source-card strong { overflow: hidden; font-size: 17px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.approval-source-card span { color: #087a60; font-size: 13px; font-weight: 650; }
+.approval-source-card small { display: -webkit-box; overflow: hidden; color: #6f6f6f; font-size: 12px; line-height: 1.35; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.approval-preview { display: inline-flex; align-items: center; gap: 6px; color: #0d0d0d; font-size: 13px; font-weight: 650; }
+.approval-preview svg { width: 14px; height: 14px; }
+.approval-actions { width: 100%; display: grid; gap: 9px; margin-top: 3px; }
+.approval-actions button { min-height: 52px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 15px; border-radius: 16px; font-size: 15px; font-weight: 650; }
+.approval-actions button svg { width: 18px; height: 18px; }
+.approval-confirm { border: 0; color: #fff; background: #0d0d0d; }
+.approval-confirm:hover { background: #242424; }
+.approval-reject { border: 1px solid rgba(13, 13, 13, .13); color: #3f3f3f; background: #fff; }
+.approval-reject:hover { background: #f7f7f7; }
+.approval-actions button:disabled { opacity: .62; }
+.approval-note { max-width: 340px; color: #777; font-size: 12px; line-height: 1.4; }
+
 .subscreen { height: 100%; overflow-y: auto; }
 .screen-header { position: sticky; top: 0; z-index: 5; min-height: 64px; display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; padding: 0 max(28px, calc((100% - 920px) / 2)); border-bottom: 1px solid rgba(13, 13, 13, .10); background: rgba(255, 255, 255, .95); backdrop-filter: blur(16px); }
 .screen-header button { width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; }
