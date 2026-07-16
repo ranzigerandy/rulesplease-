@@ -30,6 +30,12 @@ TOP_CONTEXT_CHUNKS = 6
 DISCOVERY_TIMEOUT = 12
 
 RULEBOOK_SOURCES = {
+    822: {
+        "url": "https://images.zmangames.com/filer_public/b7/df/b7df3dfa-d535-4473-b422-f4e5d4564c5f/carcassonne_rulesheet_en.pdf",
+        "label": "Carcassonne base-game rulebook (Z-Man Games)",
+        "confidence": "verified",
+        "edition": "base game",
+    },
     169786: {
         "url": "https://gamers-hq.de/media/pdf/bd/8a/7b/ScytheRulesCombined_V2_CS_r13-BW.pdf",
         "label": "Scythe complete rulebook PDF",
@@ -56,6 +62,30 @@ RULEBOOK_SOURCES = {
         "confidence": "medium",
     },
 }
+
+EDITION_MARKERS = (
+    "winter edition",
+    "anniversary edition",
+    "20th anniversary",
+    "big box",
+    "junior",
+    "travel edition",
+    "hunters and gatherers",
+    "the castle",
+    "the city",
+    "south seas",
+    "amazonas",
+    "mists over",
+    "star wars",
+    "safari",
+)
+
+OFFICIAL_RULEBOOK_HOSTS = (
+    "asmodee.com",
+    "hans-im-glueck.de",
+    "images.zmangames.com",
+    "zmangames.com",
+)
 
 GAMES_BY_ID = {}
 STATE_LOCK = threading.Lock()
@@ -98,6 +128,75 @@ def load_catalog():
 
 def normalize(value):
     return re.sub(r"[^a-z0-9]+", " ", str(value).lower()).strip()
+
+
+def unexpected_edition_markers(game, value):
+    canonical = normalize(game.get("name"))
+    evidence = normalize(value)
+    return [
+        marker
+        for marker in EDITION_MARKERS
+        if marker in evidence and marker not in canonical
+    ]
+
+
+def validate_rulebook_identity(game, candidate, pages):
+    """Return a deterministic identity verdict before a PDF may be indexed."""
+    first_pages = "\n".join(page.get("text", "") for page in pages[:3])[:18000]
+    url_evidence = " ".join([candidate.get("url", ""), candidate.get("label", "")])
+    mismatches = sorted(set(
+        unexpected_edition_markers(game, url_evidence)
+        + unexpected_edition_markers(game, first_pages)
+    ))
+    if mismatches:
+        return {
+            "approved": False,
+            "reviewRequired": False,
+            "edition": ", ".join(mismatches),
+            "confidence": "rejected",
+            "reason": f"Edition mismatch: found {', '.join(mismatches)}.",
+        }
+
+    canonical = normalize(game.get("name"))
+    text = normalize(first_pages)
+    url_text = normalize(url_evidence)
+    title_terms = [term for term in canonical.split() if len(term) > 2]
+    exact_title = bool(canonical and re.search(rf"\b{re.escape(canonical)}\b", text))
+    title_hits = sum(1 for term in title_terms if re.search(rf"\b{re.escape(term)}\b", text))
+    all_title_terms = bool(title_terms and title_hits == len(title_terms))
+    english_signals = sum(
+        1
+        for phrase in ("game", "player", "rules", "setup", "points", "turn")
+        if re.search(rf"\b{phrase}\b", text)
+    )
+    host = urllib.parse.urlparse(candidate.get("url", "")).netloc.lower()
+
+    score = 0
+    if exact_title:
+        score += 55
+    elif all_title_terms:
+        score += 38
+    if canonical and canonical in url_text:
+        score += 15
+    if any(host == official or host.endswith(f".{official}") for official in OFFICIAL_RULEBOOK_HOSTS):
+        score += 15
+    if candidate.get("confidence") == "verified":
+        score += 15
+    if english_signals >= 3:
+        score += 10
+
+    approved = score >= 65 and english_signals >= 2
+    return {
+        "approved": approved,
+        "reviewRequired": not approved,
+        "edition": candidate.get("edition", "base game"),
+        "confidence": "verified" if score >= 85 else "high" if approved else "review_required",
+        "reason": (
+            "Title, edition, and language match the selected game."
+            if approved
+            else "The PDF title, edition, or language could not be verified with enough confidence."
+        ),
+    }
 
 
 def load_state():
@@ -289,6 +388,8 @@ def add_candidate(candidates, url, game):
     host = parsed.netloc.lower()
     if any(blocked in host for blocked in ["facebook.com", "youtube.com", "youtu.be", "reddit.com", "scribd.com"]):
         return
+    if unexpected_edition_markers(game, url):
+        return
     key = urllib.parse.urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", parsed.query, ""))
     score = score_rulebook_candidate(key, game)
     if score <= 0:
@@ -308,6 +409,8 @@ def score_rulebook_candidate(url, game):
     text = normalize(urllib.parse.unquote(url))
     path = parsed.path.lower()
     score = 0
+    if unexpected_edition_markers(game, url):
+        return -100
     if path.endswith(".pdf") or ".pdf" in path:
         score += 45
     if any(word in text for word in ["rulebook", "rules", "manual", "learn to play"]):
