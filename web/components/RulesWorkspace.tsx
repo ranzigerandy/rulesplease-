@@ -471,8 +471,10 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
               {role === "assistant" ? <MessageResponse>{text}</MessageResponse> : <p>{text}</p>}
               {messageCitations.length > 0 && (
                 <div className={`citation-row ${citationsExpanded ? "is-expanded" : ""}`}>
+                  <div className="citation-disclosure">
                   <button
                     type="button"
+                    className="citation-toggle"
                     aria-expanded={citationsExpanded}
                     aria-controls={`sources-${message.id}`}
                     onClick={() => setExpandedCitationMessageId((current) => current === message.id ? null : message.id)}
@@ -501,6 +503,7 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
                       ))}
                     </section>
                   )}
+                  </div>
                 </div>
               )}
             </article>
