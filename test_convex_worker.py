@@ -10,15 +10,54 @@ import convex_worker
 class FakeApi:
     def __init__(self):
         self.calls = []
+        self.prepare_response = {"rulebookId": "rulebook-test", "needsApproval": False, "alreadyIndexed": False}
 
     def post(self, path, payload):
         self.calls.append((path, payload))
         if path == "/worker/jobs/prepare":
-            return {"rulebookId": "rulebook-test", "needsApproval": False, "alreadyIndexed": False}
+            return self.prepare_response
         return {"ok": True}
 
 
 class ConvexWorkerFlowTests(unittest.TestCase):
+    def test_imported_uncertain_rulebook_still_reaches_visual_approval(self):
+        api = FakeApi()
+        api.prepare_response = {"rulebookId": "rulebook-test", "needsApproval": True, "alreadyIndexed": False}
+        with TemporaryDirectory() as directory:
+            pdf_path = Path(directory) / "rules.pdf"
+            pdf_path.write_bytes(b"%PDF-test")
+            claim = {
+                "job": {"_id": "job-test", "leaseToken": "lease-test"},
+                "game": {"bggId": 123, "name": "SCOUT"},
+                "rulebook": {},
+                "manualSource": {"url": "https://example.com/scout.pdf", "label": "SCOUT imported rulebook"},
+            }
+            metadata = {
+                "identity": {
+                    "approved": False,
+                    "reviewRequired": False,
+                    "edition": "base game",
+                    "confidence": "rejected",
+                    "reason": "The title could not be verified.",
+                },
+                "documentHash": "hash-test",
+                "pageCount": 12,
+                "fileSize": 123,
+                "contentType": "application/pdf",
+                "revision": None,
+            }
+            with (
+                patch.dict(os.environ, {"RULES_PLEASE_UPLOAD_PDFS": "0"}),
+                patch.object(convex_worker.app_server, "GAMES_BY_ID", {}),
+                patch.object(convex_worker.app_server, "download_pdf", return_value=pdf_path),
+                patch.object(convex_worker, "_preview_metadata", return_value=metadata),
+            ):
+                convex_worker.process_claim(api, claim)
+
+        prepared = next(payload for path, payload in api.calls if path == "/worker/jobs/prepare")
+        self.assertEqual(prepared["source"]["confidence"], "manual_review")
+        self.assertIn("/worker/jobs/request-approval", [path for path, _ in api.calls])
+
     def test_approved_preview_continues_through_indexing_and_completion(self):
         api = FakeApi()
         with TemporaryDirectory() as directory:

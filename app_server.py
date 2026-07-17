@@ -608,23 +608,39 @@ def download_pdf(source, game, progress=None, force=False, require_public_https=
     else:
         response_context = urllib.request.urlopen(request, timeout=30)
     with response_context as response:
+        # Some hosts serve downloadable PDFs as application/octet-stream (and a
+        # few incorrectly label them as HTML). Trust the file signature as well
+        # as the header, but never write a non-PDF response to the local cache.
         content_type = response.headers.get("Content-Type", "")
-        if "pdf" not in content_type.lower():
-            if require_public_https:
-                raise ValueError(f"Imported URL is not a PDF response: {content_type}")
+        first_chunk = response.read(4096)
+        is_pdf = "pdf" in content_type.lower() or first_chunk.lstrip().startswith(b"%PDF-")
+        if not is_pdf:
             fallback_urls = [
                 candidate for candidate in extract_pdf_links(url, game)
                 if candidate != url
             ]
             if fallback_urls:
+                # A pasted URL can be a publisher download page or viewer. Keep
+                # the same public-HTTPS / redirect checks for the discovered
+                # direct PDF and retain that final URL for preview links.
+                source["url"] = fallback_urls[0]
                 return download_pdf(
-                    {**source, "url": fallback_urls[0]}, game, progress=progress, force=force, require_public_https=require_public_https,
+                    source, game, progress=progress, force=False, require_public_https=require_public_https,
+                )
+            if require_public_https:
+                raise ValueError(
+                    "The imported link opened a web page, not a PDF, and no downloadable PDF was found on that page. "
+                    "Paste the direct PDF download link or upload the PDF file."
                 )
             raise ValueError(f"Source is not a PDF response: {content_type}")
         expected = int(response.headers.get("Content-Length") or 0)
-        total = 0
+        total = len(first_chunk)
         temp = target.with_suffix(".part")
         with temp.open("wb") as handle:
+            if total > MAX_PDF_BYTES:
+                temp.unlink(missing_ok=True)
+                raise ValueError("PDF is above the local MVP max size.")
+            handle.write(first_chunk)
             while True:
                 chunk = response.read(1024 * 256)
                 if not chunk:

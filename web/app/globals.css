@@ -478,6 +478,7 @@
 .approval-error-details summary svg { width: 16px; height: 16px; flex: 0 0 auto; color: #777; transition: transform 150ms ease; }
 .approval-error-details[open] summary svg { transform: rotate(90deg); }
 .approval-error-details > p { margin: 0; padding: 0 14px 14px; color: #696969; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.approval-error-message > p { padding: 13px 14px; }
 .settings-section { gap: 7px; }
 .settings-section h2 { padding-left: 12px; color: #7a7a80; font-size: 11px; font-weight: 560; letter-spacing: .04em; text-transform: uppercase; }
 .settings-section > div { border: 0; border-radius: 13px; background: #fff; }

@@ -570,10 +570,9 @@ function RulebookRetry({ gameName, reason, replacing, onReplace, onImport }: { g
       <h2>We could not verify a rulebook.</h2>
       <p>We did not find a reliable rulebook match for {gameName}. Search again before starting the chat.</p>
       {reason && (
-        <details className="approval-error-details">
-          <summary><span>Technical details</span><ChevronRight /></summary>
+        <div className="approval-error-details approval-error-message">
           <p>{reason}</p>
-        </details>
+        </div>
       )}
       <div className="approval-actions retry-actions">
         <button type="button" className="approval-confirm" disabled={replacing} onClick={onReplace}>

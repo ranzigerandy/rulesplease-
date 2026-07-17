@@ -174,6 +174,21 @@ def process_claim(api, claim):
                     require_public_https=bool(manual_source),
                 )
                 metadata = _preview_metadata(candidate_path, game, candidate)
+                # A URL or file deliberately supplied by the player is still
+                # shown for visual approval when automatic title matching is
+                # inconclusive. This avoids false negatives for short titles
+                # such as SCOUT, while nothing is indexed before approval.
+                if manual_source and not metadata["identity"]["approved"]:
+                    identity = metadata["identity"]
+                    metadata["identity"] = {
+                        **identity,
+                        "reviewRequired": True,
+                        "confidence": "manual_review",
+                        "reason": (
+                            "We could not verify this imported rulebook automatically. "
+                            "Please check the preview, game, and edition before approving it."
+                        ),
+                    }
                 if metadata["documentHash"] in rejected_hashes:
                     checked_errors.append(f"Candidate {rank} was already rejected by you.")
                     continue
@@ -276,6 +291,16 @@ def process_claim(api, claim):
             )
             identity = app_server.validate_rulebook_identity(game, candidate, pages)
             if not identity["approved"]:
+                if manual_source:
+                    # The player already reviewed this exact document on the
+                    # preview screen. Preserve that explicit decision instead
+                    # of rejecting a legitimate one-word or low-text title.
+                    selected_source = {
+                        **candidate,
+                        "edition": identity["edition"],
+                        "confidence": "manual_review",
+                    }
+                    break
                 last_error = ValueError(identity["reason"])
                 if identity["reviewRequired"]:
                     review_reasons.append(identity["reason"])

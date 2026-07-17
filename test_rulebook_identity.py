@@ -1,4 +1,8 @@
+import io
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import Mock, patch
 
 import app_server
 
@@ -82,6 +86,40 @@ class RulebookIdentityTests(unittest.TestCase):
             app_server.validate_public_pdf_url("http://example.com/rules.pdf")
         with self.assertRaisesRegex(ValueError, "private or local"):
             app_server.validate_public_pdf_url("https://127.0.0.1/rules.pdf")
+
+    def test_imported_viewer_url_resolves_the_pdf_link_and_keeps_it_for_preview(self):
+        class Response(io.BytesIO):
+            def __init__(self, payload, content_type):
+                super().__init__(payload)
+                self.headers = {"Content-Type": content_type, "Content-Length": str(len(payload))}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                self.close()
+
+        viewer = "https://example.com/scout-download"
+        direct_pdf = "https://cdn.example.com/SCOUT-rules.pdf"
+        opener = Mock()
+        opener.open.side_effect = [
+            Response(b"<html>Download SCOUT</html>", "text/html"),
+            Response(b"%PDF-1.7\nrulebook", "application/pdf"),
+        ]
+        source = {"url": viewer, "label": "SCOUT imported rulebook"}
+
+        with TemporaryDirectory() as directory:
+            with (
+                patch.object(app_server, "rules_pdf_path", return_value=Path(directory) / "SCOUT rules.pdf"),
+                patch.object(app_server, "validate_public_pdf_url"),
+                patch.object(app_server, "extract_pdf_links", return_value=[direct_pdf]),
+                patch.object(app_server.urllib.request, "build_opener", return_value=opener),
+            ):
+                downloaded = app_server.download_pdf(
+                    source, {"name": "SCOUT"}, force=True, require_public_https=True
+                )
+            self.assertEqual(source["url"], direct_pdf)
+            self.assertEqual(downloaded.read_bytes(), b"%PDF-1.7\nrulebook")
 
 
 if __name__ == "__main__":
