@@ -9,6 +9,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import socket
 import time
 import urllib.error
@@ -52,16 +53,19 @@ class WorkerApi:
             raise RuntimeError(result["error"])
         return result
 
-    def upload_pdf(self, pdf_path):
+    def upload_file(self, file_path, content_type):
         upload_url = self.post("/worker/rulebooks/upload-url", {})["uploadUrl"]
         request = urllib.request.Request(
             upload_url,
-            data=pdf_path.read_bytes(),
+            data=file_path.read_bytes(),
             method="POST",
-            headers={"Content-Type": "application/pdf"},
+            headers={"Content-Type": content_type},
         )
         with urllib.request.urlopen(request, timeout=180) as response:
             return json.loads(response.read().decode("utf-8"))["storageId"]
+
+    def upload_pdf(self, pdf_path):
+        return self.upload_file(pdf_path, "application/pdf")
 
 
 def _without_none(value):
@@ -103,6 +107,29 @@ def _heartbeat(api, job, phase, progress, message):
     )
 
 
+def _preview_metadata(pdf_path, game, candidate):
+    """Read only the opening pages needed for identity review, not the full book."""
+    from pypdf import PdfReader
+
+    reader = PdfReader(str(pdf_path))
+    page_count = len(reader.pages)
+    first_pages = []
+    for index, page in enumerate(reader.pages[:3], start=1):
+        first_pages.append({"page": index, "text": app_server.clean_text(page.extract_text() or "")})
+    identity = app_server.validate_rulebook_identity(game, candidate, first_pages)
+    document_hash = hashlib.sha256(pdf_path.read_bytes()).hexdigest()
+    filename = pdf_path.name
+    revision_match = re.search(r"(?:rev(?:ision)?|ver(?:sion)?|v)[-_ .]*(\d+(?:\.\d+)*)", filename, re.I)
+    return {
+        "identity": identity,
+        "documentHash": document_hash,
+        "pageCount": page_count,
+        "fileSize": pdf_path.stat().st_size,
+        "contentType": "application/pdf",
+        "revision": revision_match.group(1) if revision_match else candidate.get("revision"),
+    }
+
+
 def process_claim(api, claim):
     job = claim["job"]
     convex_game = claim["game"]
@@ -122,12 +149,56 @@ def process_claim(api, claim):
     approved_source = claim.get("approvedSource")
 
     if not approved_source:
-        preview_candidate = next(
-            _source_candidates(game, manual_source, claim.get("rejectedSourceUrls")),
-            None,
-        )
-        if not preview_candidate:
-            raise ValueError("No rulebook source candidate found")
+        candidates = list(
+            _source_candidates(game, manual_source, claim.get("rejectedSourceUrls"))
+        )[:5]
+        if not candidates:
+            raise ValueError("We could not find a new rulebook candidate for this game.")
+
+        rejected_hashes = set(claim.get("rejectedDocumentHashes") or [])
+        fallback = None
+        checked_errors = []
+        for rank, candidate in enumerate(candidates, start=1):
+            try:
+                _heartbeat(
+                    api,
+                    job,
+                    "searching_rulebook",
+                    min(24, 5 + rank * 3),
+                    f"Checking rulebook candidate {rank} of {len(candidates)}.",
+                )
+                candidate_path = app_server.download_pdf(
+                    candidate,
+                    game,
+                    force=True,
+                    require_public_https=bool(manual_source),
+                )
+                metadata = _preview_metadata(candidate_path, game, candidate)
+                if metadata["documentHash"] in rejected_hashes:
+                    checked_errors.append(f"Candidate {rank} was already rejected by you.")
+                    continue
+                preview = (candidate, candidate_path, metadata, rank)
+                if metadata["identity"]["approved"]:
+                    fallback = preview
+                    break
+                if metadata["identity"]["reviewRequired"] and fallback is None:
+                    fallback = preview
+                else:
+                    checked_errors.append(metadata["identity"]["reason"])
+            except Exception as exc:
+                checked_errors.append(str(exc))
+
+        if fallback is None:
+            detail = checked_errors[-1] if checked_errors else "no candidate passed the identity check"
+            raise ValueError(
+                f"We checked {len(candidates)} rulebook candidate(s), but none was usable. {detail}"
+            )
+
+        preview_candidate, preview_path, metadata, candidate_rank = fallback
+        identity = metadata["identity"]
+        preview_storage_id = job.get("sourceStorageId")
+        if not preview_storage_id and os.environ.get("RULES_PLEASE_UPLOAD_PDFS") == "1":
+            preview_storage_id = api.upload_pdf(preview_path)
         prepared = api.post(
             "/worker/jobs/prepare",
             {
@@ -137,12 +208,26 @@ def process_claim(api, claim):
                     "url": preview_candidate["url"],
                     "label": preview_candidate.get("label", f"{game['name']} rulebook"),
                     "language": preview_candidate.get("language", "en"),
-                    "edition": preview_candidate.get("edition", "base game"),
-                    "confidence": preview_candidate.get("confidence", "auto"),
+                    "edition": identity.get("edition") or preview_candidate.get("edition", "base game"),
+                    "revision": metadata.get("revision"),
+                    "confidence": identity.get("confidence") or preview_candidate.get("confidence", "auto"),
                     "reviewStatus": "review_required",
+                    "documentHash": metadata["documentHash"],
+                    "pageCount": metadata["pageCount"],
+                    "fileSize": metadata["fileSize"],
+                    "contentType": metadata["contentType"],
+                    "candidateRank": candidate_rank,
+                    "storageId": preview_storage_id,
                 },
             },
         )
+        if prepared.get("alreadyIndexed"):
+            api.post(
+                "/worker/jobs/reuse",
+                {"jobId": job["_id"], "leaseToken": job["leaseToken"]},
+            )
+            print(f"Reused indexed rulebook for BGG {bgg_id}")
+            return
         if prepared["needsApproval"]:
             api.post(
                 "/worker/jobs/request-approval",
@@ -150,7 +235,12 @@ def process_claim(api, claim):
             )
             print(f"Waiting for rulebook approval for BGG {bgg_id}")
             return
-        approved_source = preview_candidate
+        approved_source = {
+            **preview_candidate,
+            "edition": identity.get("edition") or preview_candidate.get("edition", "base game"),
+            "confidence": identity.get("confidence") or preview_candidate.get("confidence", "auto"),
+        }
+        pdf_path = preview_path
 
     _heartbeat(
         api,
@@ -168,15 +258,16 @@ def process_claim(api, claim):
                 30,
                 f"Trying rulebook source: {candidate['url']}",
             )
-            pdf_path = app_server.download_pdf(
-                candidate,
-                game,
-                force=bool(manual_source),
-                require_public_https=bool(manual_source),
-                progress=lambda percent, message: _heartbeat(
-                    api, job, "downloading_rulebook", percent, message
-                ),
-            )
+            if pdf_path is None:
+                pdf_path = app_server.download_pdf(
+                    candidate,
+                    game,
+                    force=True,
+                    require_public_https=bool(manual_source),
+                    progress=lambda percent, message: _heartbeat(
+                        api, job, "downloading_rulebook", percent, message
+                    ),
+                )
             pages = app_server.extract_pages(
                 pdf_path,
                 progress=lambda percent, message: _heartbeat(
@@ -255,7 +346,10 @@ def process_claim(api, claim):
             },
         )
 
-    storage_id = job.get("sourceStorageId")
+    storage_id = (
+        job.get("sourceStorageId")
+        or (claim.get("rulebook") or {}).get("storageId")
+    )
     if not storage_id and os.environ.get("RULES_PLEASE_UPLOAD_PDFS") == "1":
         storage_id = api.upload_pdf(pdf_path)
     api.post(

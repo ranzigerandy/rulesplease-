@@ -70,9 +70,25 @@ type LibraryRow = {
     label: string;
     language: string;
     edition?: string;
+    revision?: string;
     confidence: string;
     reviewStatus: "pending" | "approved" | "rejected" | "review_required";
+    documentHash?: string;
+    pageCount?: number;
+    fileSize?: number;
+    candidateRank?: number;
   } | null;
+  rulebook?: {
+    documentHash?: string;
+    pageCount?: number;
+    variantKey?: string;
+    globalStatus?: "candidate" | "verified" | "reported" | "deprecated";
+    verificationCount?: number;
+    reportCount?: number;
+  } | null;
+  previewPdfUrl?: string | null;
+  sharedRulebook?: boolean;
+  reusedSharedRulebook?: boolean;
 };
 
 type ChatMessage = {
@@ -323,7 +339,10 @@ function WorkspaceContent() {
               <header className="chat-header">
                 <button className="round-action" aria-label="Back to chats" onClick={() => openView("home")}><ArrowLeft /></button>
                 <GameCover game={selected.game} />
-                <h1>{selected.game?.name}</h1>
+                <div className="chat-title">
+                  <h1>{selected.game?.name}</h1>
+                  {selected.reusedSharedRulebook && <span><LibraryBig />Shared rulebook</span>}
+                </div>
                 {selected.rulebookSource ? (
                   <button className="round-action chat-info" aria-label="About this rulebook" onClick={() => setShowRulebookInfo(true)}><Info /></button>
                 ) : <span className="chat-header-spacer" aria-hidden="true" />}
@@ -333,6 +352,8 @@ function WorkspaceContent() {
                   <RulebookApproval
                     game={selected.game}
                     source={selected.rulebookSource}
+                    rulebook={selected.rulebook}
+                    previewPdfUrl={selected.previewPdfUrl}
                     approving={approvingRulebook}
                     replacing={replacingRulebook}
                     onApprove={() => void approveSelectedRulebook()}
@@ -367,6 +388,8 @@ function WorkspaceContent() {
                 <RulebookInfoSheet
                   gameName={selected.game?.name ?? "This game"}
                   source={selected.rulebookSource ?? null}
+                  rulebook={selected.rulebook ?? null}
+                  reusedSharedRulebook={selected.reusedSharedRulebook}
                   replacing={replacingRulebook}
                   onClose={() => setShowRulebookInfo(false)}
                   onReplace={() => void replaceWrongRulebook()}
@@ -421,9 +444,75 @@ function WorkspaceContent() {
   );
 }
 
-function RulebookApproval({ game, source, approving, replacing, onApprove, onReplace }: {
+function formatFileSize(bytes?: number) {
+  if (!bytes) return "Unknown";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function PdfFirstPagePreview({ url, label }: { url: string; label: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    let loadedDocument: import("pdfjs-dist/types/src/display/api").PDFDocumentProxy | null = null;
+    void (async () => {
+      try {
+        const pdfjs = await import("pdfjs-dist");
+        pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+          "pdfjs-dist/build/pdf.worker.min.mjs",
+          import.meta.url,
+        ).toString();
+        loadedDocument = await pdfjs.getDocument(url).promise;
+        const page = await loadedDocument.getPage(1);
+        const base = page.getViewport({ scale: 1 });
+        const targetWidth = Math.min(390, Math.max(260, window.innerWidth - 56));
+        const viewport = page.getViewport({ scale: targetWidth / base.width });
+        const canvas = canvasRef.current;
+        if (!active || !canvas) return;
+        const ratio = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.floor(viewport.width * ratio);
+        canvas.height = Math.floor(viewport.height * ratio);
+        canvas.style.aspectRatio = `${viewport.width} / ${viewport.height}`;
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("Canvas unavailable");
+        await page.render({
+          canvas,
+          canvasContext: context,
+          viewport,
+          transform: ratio === 1 ? undefined : [ratio, 0, 0, ratio, 0, 0],
+        }).promise;
+        if (active) setLoading(false);
+      } catch {
+        if (active) {
+          setLoading(false);
+          setError(true);
+        }
+      }
+    })();
+    return () => {
+      active = false;
+      if (loadedDocument) void loadedDocument.destroy();
+    };
+  }, [url]);
+
+  return (
+    <div className="approval-pdf-preview">
+      {loading && <div className="approval-preview-state"><LoaderCircle className="spin" />Loading first page…</div>}
+      {error && <div className="approval-preview-state"><FileText />First-page preview unavailable</div>}
+      <canvas ref={canvasRef} aria-label={label} className={loading || error ? "is-hidden" : ""} />
+      <span>Page 1 preview</span>
+    </div>
+  );
+}
+
+function RulebookApproval({ game, source, rulebook, previewPdfUrl, approving, replacing, onApprove, onReplace }: {
   game: LibraryRow["game"];
   source: NonNullable<LibraryRow["rulebookSource"]>;
+  rulebook?: LibraryRow["rulebook"];
+  previewPdfUrl?: string | null;
   approving: boolean;
   replacing: boolean;
   onApprove: () => void;
@@ -436,6 +525,7 @@ function RulebookApproval({ game, source, approving, replacing, onApprove, onRep
       <span className="approval-eyebrow">Before you start</span>
       <h2 id="rulebook-approval-title">Is this the right rulebook?</h2>
       <p>Preview the source first. We will only download and index it after your approval.</p>
+      {previewPdfUrl && <PdfFirstPagePreview url={previewPdfUrl} label={`${gameName} rulebook cover`} />}
       <div className="approval-source-card">
         <GameCover game={game} />
         <div>
@@ -444,6 +534,13 @@ function RulebookApproval({ game, source, approving, replacing, onApprove, onRep
           <small>{source.label}</small>
         </div>
       </div>
+      <dl className="approval-metadata">
+        <div><dt>Pages</dt><dd>{source.pageCount ?? rulebook?.pageCount ?? "—"}</dd></div>
+        <div><dt>File</dt><dd>{formatFileSize(source.fileSize)}</dd></div>
+        <div><dt>Edition</dt><dd>{source.edition ?? "Base game"}</dd></div>
+        <div><dt>Revision</dt><dd>{source.revision ?? "Not specified"}</dd></div>
+        {(source.documentHash ?? rulebook?.documentHash) && <div className="metadata-wide"><dt>Document ID</dt><dd>{(source.documentHash ?? rulebook?.documentHash)?.slice(0, 12)}</dd></div>}
+      </dl>
       <a className="approval-preview" href={source.url} target="_blank" rel="noreferrer">Preview rulebook <ExternalLink /></a>
       <div className="approval-actions">
         <button type="button" className="approval-confirm" disabled={approving || replacing} onClick={onApprove}>
@@ -452,7 +549,7 @@ function RulebookApproval({ game, source, approving, replacing, onApprove, onRep
         </button>
         <button type="button" className="approval-reject" disabled={approving || replacing} onClick={onReplace}>
           {replacing ? <LoaderCircle className="spin" /> : <RefreshCw />}
-          {replacing ? "Looking again…" : "No, find another rulebook"}
+          {replacing ? "Looking again…" : "No, try the next candidate"}
         </button>
       </div>
       <small className="approval-note">Nothing is indexed until you confirm the game and edition.</small>
@@ -487,7 +584,7 @@ function RulebookRetry({ gameName, reason, replacing, onReplace, onImport }: { g
   );
 }
 
-function RulebookInfoSheet({ gameName, source, replacing, onClose, onReplace }: { gameName: string; source: LibraryRow["rulebookSource"]; replacing: boolean; onClose: () => void; onReplace: () => void }) {
+function RulebookInfoSheet({ gameName, source, rulebook, reusedSharedRulebook, replacing, onClose, onReplace }: { gameName: string; source: LibraryRow["rulebookSource"]; rulebook: LibraryRow["rulebook"]; reusedSharedRulebook?: boolean; replacing: boolean; onClose: () => void; onReplace: () => void }) {
   return (
     <div className="source-backdrop" role="presentation" onMouseDown={onClose}>
       <section className="source-sheet rulebook-info-sheet" role="dialog" aria-modal="true" aria-label={`${gameName} rulebook information`} onMouseDown={(event) => event.stopPropagation()}>
@@ -496,11 +593,14 @@ function RulebookInfoSheet({ gameName, source, replacing, onClose, onReplace }: 
           <button type="button" onClick={onClose} aria-label="Close rulebook information"><X /></button>
         </header>
         <div className="rulebook-info-content">
-          <div className="identity-verdict"><ShieldCheck /><div><strong>{source?.edition ?? "Base game"}</strong><span>{source?.reviewStatus === "approved" ? "Identity check passed" : "Source status unavailable"}</span></div></div>
+          <div className="identity-verdict"><ShieldCheck /><div><strong>{source?.edition ?? "Base game"}</strong><span>{reusedSharedRulebook ? "Reused instantly from the shared database" : source?.reviewStatus === "approved" ? "Identity check passed" : "Source status unavailable"}</span></div></div>
           <dl>
             <div><dt>Source</dt><dd>{source?.label ?? "Indexed rulebook"}</dd></div>
             <div><dt>Language</dt><dd>{source?.language?.toUpperCase() ?? "EN"}</dd></div>
             <div><dt>Confidence</dt><dd>{source?.confidence ?? "Unknown"}</dd></div>
+            <div><dt>Community checks</dt><dd>{rulebook?.verificationCount ?? 0}</dd></div>
+            <div><dt>Pages</dt><dd>{source?.pageCount ?? rulebook?.pageCount ?? "Unknown"}</dd></div>
+            <div><dt>Revision</dt><dd>{source?.revision ?? "Not specified"}</dd></div>
           </dl>
           {source?.url && <a className="rulebook-source-link" href={source.url} target="_blank" rel="noreferrer">Open complete rulebook <ExternalLink /></a>}
           <div className="wrong-rulebook-card">

@@ -38,7 +38,14 @@ type PrepareInput = JobLease & {
     label: string;
     language: string;
     edition?: string;
+    revision?: string;
     confidence: string;
+    documentHash?: string;
+    pageCount?: number;
+    fileSize?: number;
+    contentType?: string;
+    candidateRank?: number;
+    storageId?: Id<"_storage">;
     reviewStatus: "approved" | "review_required";
   };
 };
@@ -116,6 +123,17 @@ const requestApproval = httpAction(async (ctx, request) => {
   }
 });
 
+const reuse = httpAction(async (ctx, request) => {
+  try {
+    authorizeWorker(request);
+    const input = await body<JobLease>(request);
+    await ctx.runMutation(internal.workers.reuseReadyRulebook, input);
+    return json({ ok: true });
+  } catch (error) {
+    return json({ error: error instanceof Error ? error.message : "Invalid request" }, 400);
+  }
+});
+
 const chunks = httpAction(async (ctx, request) => {
   try {
     authorizeWorker(request);
@@ -162,6 +180,7 @@ http.route({ path: "/worker/jobs/claim", method: "POST", handler: claim });
 http.route({ path: "/worker/jobs/heartbeat", method: "POST", handler: heartbeat });
 http.route({ path: "/worker/jobs/prepare", method: "POST", handler: prepare });
 http.route({ path: "/worker/jobs/request-approval", method: "POST", handler: requestApproval });
+http.route({ path: "/worker/jobs/reuse", method: "POST", handler: reuse });
 http.route({ path: "/worker/jobs/chunks", method: "POST", handler: chunks });
 http.route({ path: "/worker/jobs/complete", method: "POST", handler: complete });
 http.route({ path: "/worker/jobs/fail", method: "POST", handler: fail });

@@ -41,12 +41,26 @@ export const list = query({
           .withIndex("by_game", (q) => q.eq("gameId", libraryGame.gameId))
           .order("desc")
           .take(20);
-        const readyRulebook = rulebooks.find((rulebook) => rulebook.status === "ready") ?? null;
-        const reviewRulebook = rulebooks.find((rulebook) => rulebook.status === "review_required") ?? null;
+        const boundRulebook = libraryGame.rulebookId
+          ? await ctx.db.get(libraryGame.rulebookId)
+          : null;
+        const readyRulebook = boundRulebook
+          ? boundRulebook.status === "ready" ? boundRulebook : null
+          : rulebooks.find(
+              (rulebook) => rulebook.status === "ready" && rulebook.globalStatus !== "reported" && rulebook.globalStatus !== "deprecated",
+            ) ?? null;
+        const reviewRulebook = boundRulebook
+          ? boundRulebook.status === "review_required" ? boundRulebook : null
+          : rulebooks.find((rulebook) => rulebook.status === "review_required") ?? null;
         const activeRulebook = readyRulebook ?? reviewRulebook;
         const rulebookSource = activeRulebook
           ? await ctx.db.get(activeRulebook.sourceId)
           : null;
+        const previewPdfUrl = activeRulebook?.storageId
+          ? await ctx.storage.getUrl(activeRulebook.storageId)
+          : rulebookSource?.storageId
+            ? await ctx.storage.getUrl(rulebookSource.storageId)
+            : rulebookSource?.url ?? null;
         const isActive =
           job && (job.status === "queued" || job.status === "processing");
         const phase = job?.phase ?? libraryGame.status;
@@ -67,6 +81,9 @@ export const list = query({
           job,
           rulebook: activeRulebook,
           rulebookSource,
+          previewPdfUrl,
+          sharedRulebook: Boolean(activeRulebook?.status === "ready"),
+          reusedSharedRulebook: Boolean(libraryGame.reusedSharedRulebook),
         };
       }),
     );
@@ -125,14 +142,17 @@ export const add = mutation({
       .withIndex("by_game", (q) => q.eq("gameId", gameId))
       .order("desc")
       .take(20);
-    const readyRulebook = rulebooks.find((rulebook) => rulebook.status === "ready");
+    const readyRulebook = rulebooks.find(
+      (rulebook) => rulebook.status === "ready" && rulebook.globalStatus !== "reported" && rulebook.globalStatus !== "deprecated",
+    );
     const libraryGameId = await ctx.db.insert("libraryGames", {
       userId,
       gameId,
+      ...(readyRulebook ? { rulebookId: readyRulebook._id, reusedSharedRulebook: true } : {}),
       status: readyRulebook ? "ready" : "queued",
-      statusLabel: readyRulebook ? "Ready" : "Queued",
+      statusLabel: readyRulebook ? "Ready instantly" : "Queued",
       statusMessage: readyRulebook
-        ? "The rulebook is indexed and ready for questions."
+        ? "Shared verified rulebook — no indexing needed."
         : "Waiting for the rulebook worker.",
       progress: readyRulebook ? 100 : 0,
       addedAt: now,
@@ -241,14 +261,31 @@ export const addManualRulebook = mutation({
       if (jobs.some((job) => job.status === "queued" || job.status === "processing")) {
         throw new Error("Wait for the active rulebook job before importing another PDF");
       }
-      const rulebooks = await ctx.db
-        .query("rulebooks")
-        .withIndex("by_game", (q) => q.eq("gameId", gameId))
-        .order("desc")
-        .take(20);
-      for (const rulebook of rulebooks.filter((item) => item.status === "ready" || item.status === "review_required")) {
-        await ctx.db.patch(rulebook._id, { status: "failed", updatedAt: now });
-        await ctx.db.patch(rulebook.sourceId, { reviewStatus: "rejected" });
+      const currentRulebook = libraryGame.rulebookId
+        ? await ctx.db.get(libraryGame.rulebookId)
+        : null;
+      if (currentRulebook) {
+        const existingDecision = await ctx.db
+          .query("rulebookDecisions")
+          .withIndex("by_user_id_and_library_game_id_and_rulebook_id", (q) =>
+            q.eq("userId", userId).eq("libraryGameId", libraryGame!._id).eq("rulebookId", currentRulebook._id),
+          )
+          .unique();
+        const decision = {
+          decision: "rejected" as const,
+          reason: "Replaced with a manual import.",
+          updatedAt: now,
+        };
+        if (existingDecision) await ctx.db.patch(existingDecision._id, decision);
+        else await ctx.db.insert("rulebookDecisions", {
+          userId,
+          libraryGameId: libraryGame._id,
+          gameId,
+          rulebookId: currentRulebook._id,
+          sourceId: currentRulebook.sourceId,
+          ...decision,
+          createdAt: now,
+        });
       }
       for (const job of jobs.filter((item) => item.status === "review_required")) {
         await ctx.db.patch(job._id, {
@@ -259,7 +296,7 @@ export const addManualRulebook = mutation({
           updatedAt: now,
         });
       }
-      if (rulebooks.some((item) => item.status === "ready")) {
+      if (currentRulebook?.status === "ready") {
         const replacementThread = await rulesAgent.createThread(ctx, {
           userId,
           title: `${input.name} rules`,
@@ -274,6 +311,8 @@ export const addManualRulebook = mutation({
         });
       }
       await ctx.db.patch(libraryGame._id, {
+        rulebookId: undefined,
+        reusedSharedRulebook: false,
         status: "queued",
         statusLabel: "Import queued",
         statusMessage: "Waiting for the worker to verify your imported rulebook.",
@@ -374,14 +413,42 @@ export const reportWrongRulebook = mutation({
     }
 
     const now = Date.now();
-    const rulebooks = await ctx.db
-      .query("rulebooks")
-      .withIndex("by_game", (q) => q.eq("gameId", libraryGame.gameId))
-      .order("desc")
-      .take(20);
-    for (const rulebook of rulebooks.filter((item) => item.status === "ready" || item.status === "review_required")) {
-      await ctx.db.patch(rulebook._id, { status: "failed", updatedAt: now });
-      await ctx.db.patch(rulebook.sourceId, { reviewStatus: "rejected" });
+    const previewJob = activeJobs.find((job) => job.status === "review_required" && job.rulebookId);
+    const rulebook = libraryGame.rulebookId
+      ? await ctx.db.get(libraryGame.rulebookId)
+      : previewJob?.rulebookId
+        ? await ctx.db.get(previewJob.rulebookId)
+        : null;
+    if (rulebook) {
+      const existingDecision = await ctx.db
+        .query("rulebookDecisions")
+        .withIndex("by_user_id_and_library_game_id_and_rulebook_id", (q) =>
+          q.eq("userId", userId).eq("libraryGameId", libraryGameId).eq("rulebookId", rulebook._id),
+        )
+        .unique();
+      const decision = {
+        decision: "rejected" as const,
+        reason: "Reported as the wrong game or edition.",
+        updatedAt: now,
+      };
+      if (existingDecision) await ctx.db.patch(existingDecision._id, decision);
+      else await ctx.db.insert("rulebookDecisions", {
+        userId,
+        libraryGameId,
+        gameId: libraryGame.gameId,
+        rulebookId: rulebook._id,
+        sourceId: rulebook.sourceId,
+        ...decision,
+        createdAt: now,
+      });
+      if (existingDecision?.decision !== "rejected") {
+        const reportCount = (rulebook.reportCount ?? 0) + 1;
+        await ctx.db.patch(rulebook._id, {
+          reportCount,
+          globalStatus: reportCount >= 3 ? "reported" : rulebook.globalStatus,
+          updatedAt: now,
+        });
+      }
     }
     for (const job of activeJobs.filter((item) => item.status === "review_required")) {
       await ctx.db.patch(job._id, {
@@ -408,6 +475,8 @@ export const reportWrongRulebook = mutation({
     });
 
     await ctx.db.patch(libraryGameId, {
+      rulebookId: undefined,
+      reusedSharedRulebook: false,
       status: "queued",
       statusLabel: "Replacing rulebook",
       statusMessage: "The previous source was rejected. Looking for the verified base-game rulebook.",
@@ -451,7 +520,9 @@ export const approveRulebook = mutation({
       .order("desc")
       .take(20);
     const previewJob = jobs.find((item) => item.status === "review_required" && item.rulebookId);
-    const rulebook = previewJob?.rulebookId
+    const rulebook = libraryGame.rulebookId
+      ? rulebooks.find((item) => item._id === libraryGame.rulebookId)
+      : previewJob?.rulebookId
       ? rulebooks.find((item) => item._id === previewJob.rulebookId)
       : rulebooks.find((item) => item.status === "review_required");
     if (!rulebook) throw new Error("There is no rulebook awaiting approval");
@@ -460,6 +531,29 @@ export const approveRulebook = mutation({
 
     const now = Date.now();
     await ctx.db.patch(source._id, { reviewStatus: "approved" });
+    const existingDecision = await ctx.db
+      .query("rulebookDecisions")
+      .withIndex("by_user_id_and_library_game_id_and_rulebook_id", (q) =>
+        q.eq("userId", userId).eq("libraryGameId", libraryGameId).eq("rulebookId", rulebook._id),
+      )
+      .unique();
+    const decision = { decision: "approved" as const, reason: undefined, updatedAt: now };
+    if (existingDecision) await ctx.db.patch(existingDecision._id, decision);
+    else await ctx.db.insert("rulebookDecisions", {
+      userId,
+      libraryGameId,
+      gameId: libraryGame.gameId,
+      rulebookId: rulebook._id,
+      sourceId: rulebook.sourceId,
+      ...decision,
+      createdAt: now,
+    });
+    const verificationCount = (rulebook.verificationCount ?? 0) + (existingDecision?.decision === "approved" ? 0 : 1);
+    await ctx.db.patch(rulebook._id, {
+      verificationCount,
+      globalStatus: source.confidence === "verified" || verificationCount >= 2 ? "verified" : "candidate",
+      updatedAt: now,
+    });
     const alreadyIndexed = rulebook.pageCount > 0 && rulebook.chunkCount > 0;
     if (!alreadyIndexed) {
       const job = previewJob?.rulebookId === rulebook._id ? previewJob : null;
@@ -476,6 +570,8 @@ export const approveRulebook = mutation({
         updatedAt: now,
       });
       await ctx.db.patch(libraryGameId, {
+        rulebookId: rulebook._id,
+        reusedSharedRulebook: false,
         status: "queued",
         statusLabel: "Preparing rulebook",
         statusMessage: "Approved. Waiting for the worker to index this rulebook.",
@@ -486,19 +582,15 @@ export const approveRulebook = mutation({
     }
 
     await ctx.db.patch(rulebook._id, { status: "ready", updatedAt: now });
-    const libraryGames = await ctx.db
-      .query("libraryGames")
-      .withIndex("by_game_and_status", (q) => q.eq("gameId", libraryGame.gameId))
-      .take(500);
-    for (const game of libraryGames) {
-      await ctx.db.patch(game._id, {
-        status: "ready",
-        statusLabel: "Ready",
-        statusMessage: "The approved rulebook is ready for questions.",
-        progress: 100,
-        updatedAt: now,
-      });
-    }
+    await ctx.db.patch(libraryGameId, {
+      rulebookId: rulebook._id,
+      reusedSharedRulebook: true,
+      status: "ready",
+      statusLabel: "Ready instantly",
+      statusMessage: "Shared indexed rulebook selected.",
+      progress: 100,
+      updatedAt: now,
+    });
     return null;
   },
 });

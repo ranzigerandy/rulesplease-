@@ -21,12 +21,19 @@ export const authorizedContext = internalQuery({
       throw new Error("Chat is not accessible");
     }
     const game = await ctx.db.get(libraryGame.gameId);
-    const rulebooks = await ctx.db
+    const boundRulebook = libraryGame.rulebookId
+      ? await ctx.db.get(libraryGame.rulebookId)
+      : null;
+    const rulebooks = boundRulebook ? [] : await ctx.db
       .query("rulebooks")
       .withIndex("by_game", (q) => q.eq("gameId", libraryGame.gameId))
       .order("desc")
       .take(20);
-    const rulebook = rulebooks.find((candidate) => candidate.status === "ready");
+    const rulebook = boundRulebook?.status === "ready"
+      ? boundRulebook
+      : rulebooks.find(
+          (candidate) => candidate.status === "ready" && candidate.globalStatus !== "reported" && candidate.globalStatus !== "deprecated",
+        );
     if (!game || !rulebook) throw new Error("Rulebook is not ready");
     return { thread, libraryGame, game, rulebook };
   },

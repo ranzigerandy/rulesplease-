@@ -39,6 +39,8 @@ export default defineSchema({
   libraryGames: defineTable({
     userId: v.string(),
     gameId: v.id("games"),
+    rulebookId: v.optional(v.id("rulebooks")),
+    reusedSharedRulebook: v.optional(v.boolean()),
     status: libraryStatus,
     statusLabel: v.string(),
     statusMessage: v.string(),
@@ -48,7 +50,8 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_and_game", ["userId", "gameId"])
-    .index("by_game_and_status", ["gameId", "status"]),
+    .index("by_game_and_status", ["gameId", "status"])
+    .index("by_rulebook_id", ["rulebookId"]),
 
   rulebookSources: defineTable({
     gameId: v.id("games"),
@@ -56,7 +59,14 @@ export default defineSchema({
     label: v.string(),
     language: v.string(),
     edition: v.optional(v.string()),
+    revision: v.optional(v.string()),
     confidence: v.string(),
+    documentHash: v.optional(v.string()),
+    pageCount: v.optional(v.number()),
+    fileSize: v.optional(v.number()),
+    contentType: v.optional(v.string()),
+    candidateRank: v.optional(v.number()),
+    storageId: v.optional(v.id("_storage")),
     reviewStatus: v.union(
       v.literal("pending"),
       v.literal("approved"),
@@ -77,6 +87,15 @@ export default defineSchema({
   rulebooks: defineTable({
     gameId: v.id("games"),
     sourceId: v.id("rulebookSources"),
+    variantKey: v.optional(v.string()),
+    globalStatus: v.optional(v.union(
+      v.literal("candidate"),
+      v.literal("verified"),
+      v.literal("reported"),
+      v.literal("deprecated"),
+    )),
+    verificationCount: v.optional(v.number()),
+    reportCount: v.optional(v.number()),
     status: v.union(
       v.literal("processing"),
       v.literal("ready"),
@@ -95,6 +114,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_game", ["gameId"])
+    .index("by_game_and_document_hash", ["gameId", "documentHash"])
     .index("by_source", ["sourceId"])
     .index("by_status", ["status"])
     .index("by_legacy_key", ["legacyKey"]),
@@ -124,6 +144,21 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_user_and_status", ["userId", "status"])
     .index("by_library_game", ["libraryGameId"]),
+
+  rulebookDecisions: defineTable({
+    userId: v.string(),
+    libraryGameId: v.id("libraryGames"),
+    gameId: v.id("games"),
+    rulebookId: v.id("rulebooks"),
+    sourceId: v.id("rulebookSources"),
+    decision: v.union(v.literal("approved"), v.literal("rejected")),
+    reason: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_id_and_library_game_id_and_rulebook_id", ["userId", "libraryGameId", "rulebookId"])
+    .index("by_library_game_id", ["libraryGameId"])
+    .index("by_rulebook_id_and_decision", ["rulebookId", "decision"]),
 
   rulebookChunks: defineTable({
     rulebookId: v.id("rulebooks"),

@@ -58,11 +58,16 @@ export const claim = internalMutation({
     const manualSourceUrl = uploadedSourceUrl ?? job.sourceUrl ?? null;
     const rulebook = job.rulebookId ? await ctx.db.get(job.rulebookId) : null;
     const approvedSource = rulebook ? await ctx.db.get(rulebook.sourceId) : null;
-    const rejectedSources = await ctx.db
-      .query("rulebookSources")
-      .withIndex("by_game", (q) => q.eq("gameId", job.gameId))
+    const decisions = await ctx.db
+      .query("rulebookDecisions")
+      .withIndex("by_library_game_id", (q) => q.eq("libraryGameId", job.libraryGameId))
       .order("desc")
       .take(100);
+    const rejectedDecisions = decisions.filter((decision) => decision.decision === "rejected");
+    const rejectedRecords = await Promise.all(rejectedDecisions.map(async (decision) => ({
+      source: await ctx.db.get(decision.sourceId),
+      rulebook: await ctx.db.get(decision.rulebookId),
+    })));
     return {
       job: { ...job, status: "processing", leaseToken, workerId },
       game: await ctx.db.get(job.gameId),
@@ -74,12 +79,17 @@ export const claim = internalMutation({
             label: approvedSource.label,
             language: approvedSource.language,
             edition: approvedSource.edition,
+            revision: approvedSource.revision,
             confidence: approvedSource.confidence,
+            documentHash: approvedSource.documentHash,
           }
         : null,
-      rejectedSourceUrls: rejectedSources
-        .filter((source) => source.reviewStatus === "rejected")
-        .map((source) => source.url),
+      rejectedSourceUrls: rejectedRecords
+        .filter((record) => record.source !== null)
+        .map((record) => record.source!.url),
+      rejectedDocumentHashes: rejectedRecords
+        .map((record) => record.source?.documentHash ?? record.rulebook?.documentHash)
+        .filter((hash): hash is string => Boolean(hash)),
       manualSource: manualSourceUrl
         ? {
             url: manualSourceUrl,
@@ -127,13 +137,21 @@ export const prepareRulebook = internalMutation({
       label: v.string(),
       language: v.string(),
       edition: v.optional(v.string()),
+      revision: v.optional(v.string()),
       confidence: v.string(),
+      documentHash: v.optional(v.string()),
+      pageCount: v.optional(v.number()),
+      fileSize: v.optional(v.number()),
+      contentType: v.optional(v.string()),
+      candidateRank: v.optional(v.number()),
+      storageId: v.optional(v.id("_storage")),
       reviewStatus: v.union(v.literal("approved"), v.literal("review_required")),
     }),
   },
   returns: v.object({
     rulebookId: v.id("rulebooks"),
     needsApproval: v.boolean(),
+    alreadyIndexed: v.boolean(),
   }),
   handler: async (ctx, { jobId, leaseToken, source: input }) => {
     const job = await ctx.db.get(jobId);
@@ -162,28 +180,102 @@ export const prepareRulebook = internalMutation({
           discoveredAt: now,
         });
     let rulebook = job.rulebookId ? await ctx.db.get(job.rulebookId) : null;
+    if (!rulebook && input.documentHash) {
+      rulebook = await ctx.db
+        .query("rulebooks")
+        .withIndex("by_game_and_document_hash", (q) =>
+          q.eq("gameId", job.gameId).eq("documentHash", input.documentHash),
+        )
+        .order("desc")
+        .first();
+      if (rulebook?.globalStatus === "reported" || rulebook?.globalStatus === "deprecated") {
+        rulebook = null;
+      }
+    }
     if (!rulebook) {
       const candidates = await ctx.db
         .query("rulebooks")
         .withIndex("by_source", (q) => q.eq("sourceId", sourceId))
         .order("desc")
         .take(5);
-      rulebook = candidates[0] ?? null;
+      rulebook = candidates.find(
+        (candidate) => candidate.status !== "failed" && candidate.globalStatus !== "reported" && candidate.globalStatus !== "deprecated",
+      ) ?? null;
     }
+    const variantKey = [
+      input.language.toLowerCase(),
+      (input.edition ?? "base game").toLowerCase(),
+      (input.revision ?? "unknown").toLowerCase(),
+      input.documentHash ?? "pending-hash",
+    ].join(":");
     const rulebookId = rulebook
       ? rulebook._id
       : await ctx.db.insert("rulebooks", {
           gameId: job.gameId,
           sourceId,
+          variantKey,
+          globalStatus: "candidate",
+          verificationCount: 0,
+          reportCount: 0,
           status: "processing",
+          ...(input.storageId ? { storageId: input.storageId } : {}),
+          ...(input.documentHash ? { documentHash: input.documentHash } : {}),
           pageCount: 0,
           chunkCount: 0,
           extractedChars: 0,
           createdAt: now,
           updatedAt: now,
         });
+    if (rulebook && rulebook.status !== "ready") {
+      await ctx.db.patch(rulebook._id, {
+        sourceId,
+        variantKey,
+        ...(input.storageId ? { storageId: input.storageId } : {}),
+        ...(input.documentHash ? { documentHash: input.documentHash } : {}),
+        updatedAt: now,
+      });
+    }
     await ctx.db.patch(jobId, { rulebookId, updatedAt: now });
-    return { rulebookId, needsApproval: reviewStatus !== "approved" };
+    const alreadyIndexed = rulebook?.status === "ready";
+    return {
+      rulebookId,
+      // Approval belongs to this exact candidate/hash, not merely to a URL
+      // that may have served a different PDF in the past.
+      needsApproval: !alreadyIndexed && input.reviewStatus !== "approved",
+      alreadyIndexed,
+    };
+  },
+});
+
+export const reuseReadyRulebook = internalMutation({
+  args: { jobId: v.id("ingestionJobs"), leaseToken: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { jobId, leaseToken }) => {
+    const job = await ctx.db.get(jobId);
+    assertLease(job, leaseToken);
+    if (!job?.rulebookId) throw new Error("Shared rulebook was not attached");
+    const rulebook = await ctx.db.get(job.rulebookId);
+    if (!rulebook || rulebook.status !== "ready") throw new Error("Shared rulebook is not ready");
+    const now = Date.now();
+    await ctx.db.patch(jobId, {
+      status: "completed",
+      phase: "ready",
+      statusMessage: "Reused an indexed shared rulebook.",
+      progress: 100,
+      leaseToken: undefined,
+      leaseExpiresAt: undefined,
+      updatedAt: now,
+    });
+    await ctx.db.patch(job.libraryGameId, {
+      rulebookId: rulebook._id,
+      reusedSharedRulebook: true,
+      status: "ready",
+      statusLabel: "Ready instantly",
+      statusMessage: "Shared verified rulebook — no indexing needed.",
+      progress: 100,
+      updatedAt: now,
+    });
+    return null;
   },
 });
 
@@ -213,6 +305,8 @@ export const requestApproval = internalMutation({
       updatedAt: now,
     });
     await ctx.db.patch(job.libraryGameId, {
+      rulebookId: job.rulebookId,
+      reusedSharedRulebook: false,
       status: "review_required",
       statusLabel: "Preview rulebook",
       statusMessage: "Check this source first. Indexing starts only after your approval.",
@@ -295,6 +389,7 @@ export const complete = internalMutation({
     await ctx.db.patch(job.rulebookId, {
       ...result,
       status: awaitingApproval ? "review_required" : "ready",
+      globalStatus: awaitingApproval ? "candidate" : "verified",
       updatedAt: now,
     });
     await ctx.db.patch(jobId, {
@@ -308,10 +403,15 @@ export const complete = internalMutation({
     });
     const libraries = await ctx.db
       .query("libraryGames")
-      .withIndex("by_game_and_status", (q) => q.eq("gameId", job.gameId))
+      .withIndex("by_rulebook_id", (q) => q.eq("rulebookId", job.rulebookId))
       .take(500);
+    if (!libraries.some((libraryGame) => libraryGame._id === job.libraryGameId)) {
+      const currentLibrary = await ctx.db.get(job.libraryGameId);
+      if (currentLibrary) libraries.push(currentLibrary);
+    }
     for (const libraryGame of libraries) {
       await ctx.db.patch(libraryGame._id, {
+        rulebookId: job.rulebookId,
         status: awaitingApproval ? "review_required" : "ready",
         statusLabel: awaitingApproval ? "Review rulebook" : "Ready",
         statusMessage: awaitingApproval

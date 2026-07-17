@@ -164,7 +164,7 @@ describe("ingestion worker leases", () => {
         createdAt: now,
         updatedAt: now,
       });
-      await ctx.db.insert("rulebookSources", {
+      const sourceId = await ctx.db.insert("rulebookSources", {
         gameId,
         url: "https://example.com/rejected-rules.pdf",
         label: "Rejected rules",
@@ -182,6 +182,27 @@ describe("ingestion worker leases", () => {
         statusMessage: "Waiting for imported PDF",
         progress: 0,
         addedAt: now,
+        updatedAt: now,
+      });
+      const rulebookId = await ctx.db.insert("rulebooks", {
+        gameId,
+        sourceId,
+        status: "failed",
+        pageCount: 0,
+        chunkCount: 0,
+        extractedChars: 0,
+        documentHash: "rejected-document-hash",
+        createdAt: now,
+        updatedAt: now,
+      });
+      await ctx.db.insert("rulebookDecisions", {
+        userId: "user_import_test",
+        libraryGameId,
+        gameId,
+        rulebookId,
+        sourceId,
+        decision: "rejected",
+        createdAt: now,
         updatedAt: now,
       });
       await ctx.db.insert("ingestionJobs", {
@@ -212,5 +233,6 @@ describe("ingestion worker leases", () => {
       confidence: "user-import",
     });
     expect(claimed?.rejectedSourceUrls).toContain("https://example.com/rejected-rules.pdf");
+    expect(claimed?.rejectedDocumentHashes).toContain("rejected-document-hash");
   });
 });
