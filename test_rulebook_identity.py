@@ -121,6 +121,25 @@ class RulebookIdentityTests(unittest.TestCase):
             self.assertEqual(source["url"], direct_pdf)
             self.assertEqual(downloaded.read_bytes(), b"%PDF-1.7\nrulebook")
 
+    def test_image_only_pdf_uses_vision_ocr_fallback(self):
+        ocr_pages = [{"page": 1, "text": "SCOUT game rules setup turn player points. " * 20}]
+        with (
+            patch.object(app_server, "_extract_pdf_text_layer", return_value=[{"page": 1, "text": ""}]),
+            patch.object(app_server, "extract_pages_with_vision_ocr", return_value=ocr_pages) as ocr,
+        ):
+            pages = app_server.extract_pages(Path("scanned-rulebook.pdf"))
+
+        self.assertEqual(pages, ocr_pages)
+        ocr.assert_called_once()
+
+    def test_response_output_text_reads_responses_api_message_content(self):
+        self.assertEqual(
+            app_server.response_output_text({
+                "output": [{"content": [{"type": "output_text", "text": "Scanned rulebook text"}]}],
+            }),
+            "Scanned rulebook text",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

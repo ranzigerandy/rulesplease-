@@ -1,7 +1,9 @@
 import csv
+import base64
 import hashlib
 import html
 import ipaddress
+import io
 import json
 import os
 import re
@@ -28,6 +30,8 @@ MAX_THUMBNAIL_BYTES = 6 * 1024 * 1024
 OPENAI_API_URL = "https://api.openai.com/v1"
 EMBEDDING_MODEL = os.environ.get("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
 ANSWER_MODEL = os.environ.get("OPENAI_ANSWER_MODEL", "gpt-5.4-mini")
+OCR_MODEL = os.environ.get("OPENAI_OCR_MODEL", "gpt-4.1-mini")
+MAX_OCR_PAGES = 64
 TOP_CONTEXT_CHUNKS = 6
 DISCOVERY_TIMEOUT = 12
 
@@ -658,7 +662,7 @@ def download_pdf(source, game, progress=None, force=False, require_public_https=
     return target
 
 
-def extract_pages(pdf_path, progress=None):
+def _extract_pdf_text_layer(pdf_path, progress=None):
     pages = []
     try:
         from pypdf import PdfReader
@@ -690,9 +694,84 @@ def extract_pages(pdf_path, progress=None):
         except Exception as exc:
             raise ValueError(f"Could not extract PDF text: {exc}") from exc
 
+    return pages
+
+
+def response_output_text(result):
+    text = result.get("output_text")
+    if text:
+        return text.strip()
+    parts = []
+    for item in result.get("output", []):
+        for content in item.get("content", []):
+            if content.get("type") in {"output_text", "text"}:
+                parts.append(content.get("text", ""))
+    return clean_text(" ".join(parts))
+
+
+def extract_pages_with_vision_ocr(pdf_path, progress=None):
+    if not openai_key():
+        raise ValueError(
+            "This PDF appears to be a scan without selectable text, and OCR is unavailable because OPENAI_API_KEY is not configured."
+        )
+    try:
+        import pypdfium2 as pdfium
+    except ImportError as exc:
+        raise ValueError("OCR support is unavailable because the PDF renderer is not installed.") from exc
+
+    document = pdfium.PdfDocument(str(pdf_path))
+    page_count = len(document)
+    if page_count > MAX_OCR_PAGES:
+        raise ValueError(
+            f"This scanned PDF has {page_count} pages. OCR imports are limited to {MAX_OCR_PAGES} pages."
+        )
+
+    pages = []
+    for index in range(page_count):
+        page = document[index]
+        image = page.render(scale=1.4).to_pil().convert("RGB")
+        buffer = io.BytesIO()
+        image.save(buffer, format="JPEG", quality=82, optimize=True)
+        encoded_image = base64.b64encode(buffer.getvalue()).decode("ascii")
+        result = openai_json(
+            "/responses",
+            {
+                "model": OCR_MODEL,
+                "input": [{
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": (
+                                "Transcribe this board-game rulebook page accurately. "
+                                "Return only the visible rulebook text, preserving headings and paragraphs."
+                            ),
+                        },
+                        {"type": "input_image", "image_url": f"data:image/jpeg;base64,{encoded_image}"},
+                    ],
+                }],
+                "store": False,
+                "max_output_tokens": 6_000,
+            },
+            timeout=120,
+        )
+        pages.append({"page": index + 1, "text": clean_text(response_output_text(result))})
+        if progress and (index == 0 or index + 1 == page_count or (index + 1) % 5 == 0):
+            percent = min(88, 62 + int(((index + 1) / max(page_count, 1)) * 26))
+            progress(percent, f"Reading scanned page {index + 1} of {page_count} with OCR.")
+    return pages
+
+
+def extract_pages(pdf_path, progress=None):
+    pages = _extract_pdf_text_layer(pdf_path, progress=progress)
     chars = sum(len(page["text"]) for page in pages)
     if chars < 500:
-        raise ValueError("Rulebook text extraction produced too little text. OCR/manual review is required.")
+        if progress:
+            progress(62, "No selectable text found. Reading the scanned rulebook with OCR.")
+        pages = extract_pages_with_vision_ocr(pdf_path, progress=progress)
+        chars = sum(len(page["text"]) for page in pages)
+    if chars < 500:
+        raise ValueError("Rulebook text extraction produced too little text after OCR.")
     return pages
 
 
@@ -1224,16 +1303,7 @@ def generate_grounded_answer(question, chunks):
         "max_output_tokens": 550,
     }
     result = openai_json("/responses", payload, timeout=120)
-    text = result.get("output_text")
-    if text:
-        return text.strip()
-    output = result.get("output", [])
-    parts = []
-    for item in output:
-        for content in item.get("content", []):
-            if content.get("type") in {"output_text", "text"}:
-                parts.append(content.get("text", ""))
-    return clean_text(" ".join(parts)) or build_answer(question, chunks)
+    return response_output_text(result) or build_answer(question, chunks)
 
 
 def stream_grounded_answer(question, chunks, on_delta):
