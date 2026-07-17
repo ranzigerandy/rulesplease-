@@ -35,7 +35,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast, Toaster } from "sonner";
 
 type AppView = "home" | "new-chat" | "rulebooks" | "settings";
@@ -571,6 +571,9 @@ function minimalCitations(answer: string, citations: CitationRecord[]) {
 
 function ChatPanel({ gameName, messages, citations, question, setQuestion, asking, submit }: { gameName: string; messages: ChatMessage[]; citations: CitationRecord[]; question: string; setQuestion: (value: string) => void; asking: boolean; submit: () => Promise<void> }) {
   const [expandedCitationMessageId, setExpandedCitationMessageId] = useState<string | null>(null);
+  const layoutRef = useRef<HTMLDivElement>(null);
+  const messageStreamRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLFormElement>(null);
   // Sources now expand inline; this keeps the legacy dialog permanently closed.
   const openCitations: CitationRecord[] = [];
   const setOpenCitations = (_citations: CitationRecord[]) => { void _citations; };
@@ -581,9 +584,62 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
     current.push(citation);
     citationMap.set(citation.agentMessageId, current);
   }
+
+  useEffect(() => {
+    const layout = layoutRef.current;
+    if (!layout) return;
+
+    const visualViewport = window.visualViewport;
+    let animationFrame = 0;
+
+    const syncToVisibleViewport = () => {
+      const visibleBottom = visualViewport
+        ? visualViewport.offsetTop + visualViewport.height
+        : window.innerHeight;
+      const availableHeight = Math.max(120, Math.floor(visibleBottom - layout.getBoundingClientRect().top));
+
+      layout.style.setProperty("--chat-viewport-height", `${availableHeight}px`);
+
+      if (composerRef.current?.contains(document.activeElement)) {
+        messageStreamRef.current?.scrollTo({ top: messageStreamRef.current.scrollHeight });
+      }
+    };
+
+    const scheduleSync = () => {
+      cancelAnimationFrame(animationFrame);
+      animationFrame = requestAnimationFrame(syncToVisibleViewport);
+    };
+
+    syncToVisibleViewport();
+    window.addEventListener("resize", scheduleSync);
+    window.addEventListener("orientationchange", scheduleSync);
+    visualViewport?.addEventListener("resize", scheduleSync);
+    visualViewport?.addEventListener("scroll", scheduleSync);
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      window.removeEventListener("resize", scheduleSync);
+      window.removeEventListener("orientationchange", scheduleSync);
+      visualViewport?.removeEventListener("resize", scheduleSync);
+      visualViewport?.removeEventListener("scroll", scheduleSync);
+    };
+  }, []);
+
+  useEffect(() => {
+    messageStreamRef.current?.scrollTo({ top: messageStreamRef.current.scrollHeight });
+  }, [asking, messages.length]);
+
+  const keepComposerAboveKeyboard = () => {
+    const scrollToLatestMessage = () => {
+      messageStreamRef.current?.scrollTo({ top: messageStreamRef.current.scrollHeight });
+    };
+    requestAnimationFrame(scrollToLatestMessage);
+    window.setTimeout(scrollToLatestMessage, 250);
+  };
+
   return (
-    <div className="chat-layout">
-      <div className="message-stream">
+    <div className="chat-layout" ref={layoutRef}>
+      <div className="message-stream" ref={messageStreamRef}>
         {messages.length === 0 ? (
           <div className="chat-empty">
             <MessageSquareQuote />
@@ -646,7 +702,7 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
         })}
         {asking && <article className="message-bubble assistant pending"><LoaderCircle className="spin" /><p>Reading the rulebook…</p></article>}
       </div>
-      <form className="question-composer" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+      <form className="question-composer" ref={composerRef} onFocusCapture={keepComposerAboveKeyboard} onSubmit={(event) => { event.preventDefault(); void submit(); }}>
         <Textarea rows={1} value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask about the rules" onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submit(); } }} />
         <Button size="icon" disabled={asking || !question.trim()} aria-label="Ask question"><Send /></Button>
       </form>
