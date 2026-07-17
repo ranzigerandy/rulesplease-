@@ -1185,7 +1185,23 @@
 .rules-app.is-chat .rules-main {
   height: 100%;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+}
+
+.rules-app.is-chat .chat-header {
+  flex: 0 0 auto;
+}
+
+.rules-app.is-chat .rulebook-approval {
+  min-height: 0;
+  flex: 1 1 auto;
+  align-content: start;
+  grid-auto-rows: max-content;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .chat-layout {
