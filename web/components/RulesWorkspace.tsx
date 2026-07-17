@@ -699,6 +699,43 @@ function minimalCitations(answer: string, citations: CitationRecord[]) {
   return selected.map(({ citation }) => ({ ...citation, excerpt: focusQuote(citation.quote) }));
 }
 
+function citationTerms(answer: string) {
+  return Array.from(new Set(
+    answer
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, " ")
+      .split(/\s+/)
+      .filter((word) => (/^\d+$/.test(word) || word.length > 2) && !CITATION_STOP_WORDS.has(word)),
+  ));
+}
+
+function highlightCitationPassage(quote: string, answer: string) {
+  const terms = citationTerms(answer);
+  if (terms.length === 0) return { before: quote, highlight: "", after: "" };
+
+  const clauses = Array.from(quote.matchAll(/[^,;:.!?]+(?:[,;:.!?]|$)/g));
+  const best = clauses
+    .map((match) => {
+      const value = match[0];
+      const hits = terms.filter((term) => new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\\\]/g, "\\$&")}\\b`, "i").test(value)).length;
+      return { value, index: match.index ?? 0, hits };
+    })
+    .filter(({ value, hits }) => hits >= 2 && value.trim().length >= 12)
+    .sort((left, right) => right.hits - left.hits || left.value.length - right.value.length)[0];
+
+  if (!best) return { before: quote, highlight: "", after: "" };
+  return {
+    before: quote.slice(0, best.index),
+    highlight: best.value,
+    after: quote.slice(best.index + best.value.length),
+  };
+}
+
+function CitationPassage({ quote, answer }: { quote: string; answer: string }) {
+  const { before, highlight, after } = highlightCitationPassage(quote, answer);
+  return <blockquote>{before}{highlight && <strong>{highlight}</strong>}{after}</blockquote>;
+}
+
 function ChatPanel({ gameName, messages, citations, question, setQuestion, asking, submit }: { gameName: string; messages: ChatMessage[]; citations: CitationRecord[]; question: string; setQuestion: (value: string) => void; asking: boolean; submit: () => Promise<void> }) {
   const [expandedCitationMessageId, setExpandedCitationMessageId] = useState<string | null>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
@@ -803,7 +840,7 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
                   {citationsExpanded && (
                     <section className="inline-source-list" id={`sources-${message.id}`} aria-label="Rulebook sources">
                       {messageCitations.map((citation) => (
-                        <article key={citation._id} className="inline-source-card">
+                        <article key={citation._id} className={`inline-source-card ${messageCitations.length === 1 ? "single-source" : ""}`}>
                           <header>
                             <span>{citation.sourceLabel} · page {citation.page}</span>
                             {citation.pdfUrl ? (
@@ -819,7 +856,7 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
                               <a href={rulebookPageUrl(citation.sourceUrl, citation.page)} target="_blank" rel="noreferrer">Open cited page <ExternalLink /></a>
                             )}
                           </header>
-                          <blockquote>{citation.quote}</blockquote>
+                          <CitationPassage quote={citation.quote} answer={text} />
                         </article>
                       ))}
                     </section>

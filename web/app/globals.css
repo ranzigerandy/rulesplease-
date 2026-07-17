@@ -706,6 +706,8 @@
 .inline-source-card a svg,
 .inline-source-card .open-rulebook-button svg { width: 14px; height: 14px; }
 .inline-source-card blockquote { max-height: 280px; margin: 0; overflow-y: auto; color: #272727; font-size: 14px; line-height: 1.58; white-space: pre-wrap; }
+.inline-source-card.single-source blockquote { max-height: none; overflow: visible; }
+.inline-source-card blockquote strong { color: #111; font-weight: 750; }
 .source-backdrop { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 24px; background: rgba(13, 13, 13, .36); backdrop-filter: blur(4px); }
 .source-sheet { width: min(680px, 100%); max-height: min(760px, calc(100svh - 48px)); display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; border: 1px solid rgba(13, 13, 13, .10); border-radius: 24px; background: #fff; box-shadow: 0 30px 80px rgba(0, 0, 0, .20); }
 .source-sheet > header { min-height: 82px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 22px; border-bottom: 1px solid rgba(13, 13, 13, .09); }
