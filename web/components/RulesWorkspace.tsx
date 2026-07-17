@@ -128,6 +128,7 @@ function WorkspaceContent() {
   const [question, setQuestion] = useState("");
   const [asking, setAsking] = useState(false);
   const [showRulebookInfo, setShowRulebookInfo] = useState(false);
+  const [showRulebookImport, setShowRulebookImport] = useState(false);
   const [replacingRulebook, setReplacingRulebook] = useState(false);
   const [approvingRulebook, setApprovingRulebook] = useState(false);
 
@@ -135,6 +136,12 @@ function WorkspaceContent() {
     () => library?.find((row) => row._id === selectedId) ?? null,
     [library, selectedId],
   );
+  const selectedImportGame = useMemo<GameSearchResult | null>(() => selected?.game ? ({
+    id: selected.game.bggId,
+    name: selected.game.name,
+    ...(selected.game.year !== undefined ? { year: selected.game.year } : {}),
+    ...(selected.game.rank !== undefined ? { rank: selected.game.rank } : {}),
+  }) : null, [selected]);
   const existingThread = useQuery(
     api.chat.getThreadForGame,
     selectedId ? { libraryGameId: selectedId } : "skip",
@@ -153,12 +160,14 @@ function WorkspaceContent() {
     setSelectedId(null);
     setChatThreadId(null);
     setShowRulebookInfo(false);
+    setShowRulebookImport(false);
     setView(next);
   };
   const openChat = (id: Id<"libraryGames">) => {
     setSelectedId(id);
     setChatThreadId(null);
     setShowRulebookInfo(false);
+    setShowRulebookImport(false);
   };
 
   async function replaceWrongRulebook() {
@@ -333,6 +342,7 @@ function WorkspaceContent() {
                   gameName={selected.game?.name ?? "this game"}
                   replacing={replacingRulebook}
                   onReplace={() => void replaceWrongRulebook()}
+                  onImport={() => setShowRulebookImport(true)}
                 />
               ) : selected.status === "failed" ? (
                 <RulebookRetry
@@ -340,6 +350,7 @@ function WorkspaceContent() {
                   reason={selected.statusMessage}
                   replacing={replacingRulebook}
                   onReplace={() => void replaceWrongRulebook()}
+                  onImport={() => setShowRulebookImport(true)}
                 />
               ) : selected.status !== "ready" ? <ProcessingPanel game={selected} /> : (
                 <ChatPanel
@@ -359,6 +370,16 @@ function WorkspaceContent() {
                   replacing={replacingRulebook}
                   onClose={() => setShowRulebookInfo(false)}
                   onReplace={() => void replaceWrongRulebook()}
+                />
+              )}
+              {showRulebookImport && selectedImportGame && (
+                <RulebookImportSheet
+                  game={selectedImportGame}
+                  onClose={() => setShowRulebookImport(false)}
+                  onImport={async (input) => {
+                    await importRulebook(selectedImportGame, input);
+                    setShowRulebookImport(false);
+                  }}
                 />
               )}
             </>
@@ -439,7 +460,7 @@ function RulebookApproval({ game, source, approving, replacing, onApprove, onRep
   );
 }
 
-function RulebookRetry({ gameName, reason, replacing, onReplace }: { gameName: string; reason?: string; replacing: boolean; onReplace: () => void }) {
+function RulebookRetry({ gameName, reason, replacing, onReplace, onImport }: { gameName: string; reason?: string; replacing: boolean; onReplace: () => void; onImport: () => void }) {
   return (
     <section className="rulebook-approval rulebook-retry">
       <div className="approval-mark"><RefreshCw /></div>
@@ -452,10 +473,15 @@ function RulebookRetry({ gameName, reason, replacing, onReplace }: { gameName: s
           <p>{reason}</p>
         </details>
       )}
-      <button type="button" className="approval-confirm" disabled={replacing} onClick={onReplace}>
-        {replacing ? <LoaderCircle className="spin" /> : <RefreshCw />}
-        {replacing ? "Searching again…" : "Search again"}
-      </button>
+      <div className="approval-actions retry-actions">
+        <button type="button" className="approval-confirm" disabled={replacing} onClick={onReplace}>
+          {replacing ? <LoaderCircle className="spin" /> : <RefreshCw />}
+          {replacing ? "Searching again…" : "Search again"}
+        </button>
+        <button type="button" className="approval-reject" disabled={replacing} onClick={onImport}>
+          <FileUp />Import rulebook
+        </button>
+      </div>
       <small className="approval-note">No chat will be created until a rulebook can be reviewed and approved.</small>
     </section>
   );
