@@ -358,6 +358,7 @@ function WorkspaceContent() {
                     replacing={replacingRulebook}
                     onApprove={() => void approveSelectedRulebook()}
                     onReplace={() => void replaceWrongRulebook()}
+                    onImport={() => setShowRulebookImport(true)}
                   />
                 ) : <RulebookRetry
                   gameName={selected.game?.name ?? "this game"}
@@ -508,7 +509,7 @@ function PdfFirstPagePreview({ url, label }: { url: string; label: string }) {
   );
 }
 
-function RulebookApproval({ game, source, rulebook, previewPdfUrl, approving, replacing, onApprove, onReplace }: {
+function RulebookApproval({ game, source, rulebook, previewPdfUrl, approving, replacing, onApprove, onReplace, onImport }: {
   game: LibraryRow["game"];
   source: NonNullable<LibraryRow["rulebookSource"]>;
   rulebook?: LibraryRow["rulebook"];
@@ -517,6 +518,7 @@ function RulebookApproval({ game, source, rulebook, previewPdfUrl, approving, re
   replacing: boolean;
   onApprove: () => void;
   onReplace: () => void;
+  onImport: () => void;
 }) {
   const gameName = game?.name ?? "This game";
   return (
@@ -550,6 +552,9 @@ function RulebookApproval({ game, source, rulebook, previewPdfUrl, approving, re
         <button type="button" className="approval-reject" disabled={approving || replacing} onClick={onReplace}>
           {replacing ? <LoaderCircle className="spin" /> : <RefreshCw />}
           {replacing ? "Looking again…" : "No, try the next candidate"}
+        </button>
+        <button type="button" className="approval-import" disabled={approving || replacing} onClick={onImport}>
+          <FileUp />Upload a rulebook PDF
         </button>
       </div>
       <small className="approval-note">Nothing is indexed until you confirm the game and edition.</small>
