@@ -709,11 +709,42 @@ function citationTerms(answer: string) {
   ));
 }
 
-function highlightCitationPassage(quote: string, answer: string) {
+function relevantCitationExcerpt(quote: string, answer: string) {
   const terms = citationTerms(answer);
-  if (terms.length === 0) return { before: quote, highlight: "", after: "" };
+  const sentences = Array.from(quote.matchAll(/[^.!?]+(?:[.!?]+|$)/g))
+    .map((match) => ({ text: match[0].trim(), index: match.index ?? 0 }))
+    .filter(({ text }) => text.length > 0);
+  const best = sentences
+    .map((sentence, index) => ({
+      ...sentence,
+      index,
+      hits: terms.filter((term) => sentence.text.toLowerCase().includes(term)).length,
+    }))
+    .sort((left, right) => right.hits - left.hits || left.index - right.index)[0];
 
-  const clauses = Array.from(quote.matchAll(/[^,;:.!?]+(?:[,;:.!?]|$)/g));
+  if (!best || best.hits === 0) {
+    return quote.length <= 520 ? quote : `${quote.slice(0, 480).trimEnd()}â€¦`;
+  }
+
+  const selected = [best];
+  const next = sentences[best.index + 1];
+  if (next && selected[0].text.length + next.text.length <= 360) selected.push({ ...next, index: best.index + 1, hits: 0 });
+  const previous = sentences[best.index - 1];
+  if (previous && selected.map(({ text }) => text.length).reduce((total, length) => total + length, 0) + previous.text.length <= 360) {
+    selected.unshift({ ...previous, index: best.index - 1, hits: 0 });
+  }
+
+  const excerpt = selected.map(({ text }) => text).join(" ");
+  return `${selected[0].index > 0 ? "â€¦ " : ""}${excerpt}${selected.at(-1)!.index < sentences.length - 1 ? " â€¦" : ""}`;
+}
+
+function highlightCitationPassage(quote: string, answer: string) {
+  const excerpt = relevantCitationExcerpt(quote, answer);
+  const terms = citationTerms(answer);
+  if (terms.length === 0) return { before: excerpt, highlight: "", after: "" };
+
+  const clauses: RegExpMatchArray[] = [];
+  for (const match of excerpt.matchAll(/[^,;:.!?]+(?:[,;:.!?]|$)/g)) clauses.push(match);
   const best = clauses
     .map((match) => {
       const value = match[0];
@@ -723,11 +754,11 @@ function highlightCitationPassage(quote: string, answer: string) {
     .filter(({ value, hits }) => hits >= 2 && value.trim().length >= 12)
     .sort((left, right) => right.hits - left.hits || left.value.length - right.value.length)[0];
 
-  if (!best) return { before: quote, highlight: "", after: "" };
+  if (!best) return { before: excerpt, highlight: "", after: "" };
   return {
-    before: quote.slice(0, best.index),
+    before: excerpt.slice(0, best.index),
     highlight: best.value,
-    after: quote.slice(best.index + best.value.length),
+    after: excerpt.slice(best.index + best.value.length),
   };
 }
 
