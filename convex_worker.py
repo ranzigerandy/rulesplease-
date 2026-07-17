@@ -189,7 +189,11 @@ def process_claim(api, claim):
                             "Please check the preview, game, and edition before approving it."
                         ),
                     }
-                if metadata["documentHash"] in rejected_hashes:
+                # Rejected hashes prevent the automatic search from cycling
+                # back to a source the player declined. An explicitly uploaded
+                # file is a new deliberate choice, so it must always reach its
+                # preview—even when it is the same document as a prior try.
+                if not manual_source and metadata["documentHash"] in rejected_hashes:
                     checked_errors.append(f"Candidate {rank} was already rejected by you.")
                     continue
                 preview = (candidate, candidate_path, metadata, rank)

@@ -31,6 +31,7 @@ class ConvexWorkerFlowTests(unittest.TestCase):
                 "game": {"bggId": 123, "name": "SCOUT"},
                 "rulebook": {},
                 "manualSource": {"url": "https://example.com/scout.pdf", "label": "SCOUT imported rulebook"},
+                "rejectedDocumentHashes": ["hash-test"],
             }
             metadata = {
                 "identity": {
