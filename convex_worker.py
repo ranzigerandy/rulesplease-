@@ -174,10 +174,9 @@ def process_claim(api, claim):
                     require_public_https=bool(manual_source),
                 )
                 metadata = _preview_metadata(candidate_path, game, candidate)
-                # A URL or file deliberately supplied by the player is still
-                # shown for visual approval when automatic title matching is
-                # inconclusive. This avoids false negatives for short titles
-                # such as SCOUT, while nothing is indexed before approval.
+                # A URL or file deliberately supplied by the player can have
+                # an inconclusive title match (for example SCOUT). Keep that
+                # fact on the source record, but do not reject the import.
                 if manual_source and not metadata["identity"]["approved"]:
                     identity = metadata["identity"]
                     metadata["identity"] = {
@@ -230,7 +229,10 @@ def process_claim(api, claim):
                     "edition": identity.get("edition") or preview_candidate.get("edition", "base game"),
                     "revision": metadata.get("revision"),
                     "confidence": identity.get("confidence") or preview_candidate.get("confidence", "auto"),
-                    "reviewStatus": "review_required",
+                    # A manually chosen file or URL is the user's explicit
+                    # source selection. Automatic discoveries still require
+                    # the visual approval screen before indexing.
+                    "reviewStatus": "approved" if manual_source else "review_required",
                     "documentHash": metadata["documentHash"],
                     "pageCount": metadata["pageCount"],
                     "fileSize": metadata["fileSize"],

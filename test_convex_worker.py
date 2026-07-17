@@ -20,9 +20,8 @@ class FakeApi:
 
 
 class ConvexWorkerFlowTests(unittest.TestCase):
-    def test_imported_uncertain_rulebook_still_reaches_visual_approval(self):
+    def test_imported_uncertain_rulebook_indexes_without_a_second_confirmation(self):
         api = FakeApi()
-        api.prepare_response = {"rulebookId": "rulebook-test", "needsApproval": True, "alreadyIndexed": False}
         with TemporaryDirectory() as directory:
             pdf_path = Path(directory) / "rules.pdf"
             pdf_path.write_bytes(b"%PDF-test")
@@ -47,17 +46,31 @@ class ConvexWorkerFlowTests(unittest.TestCase):
                 "contentType": "application/pdf",
                 "revision": None,
             }
+            pages = [{"page": 1, "text": "SCOUT game rules setup turn player points."}]
+            chunks = [{
+                "page": 1,
+                "text": pages[0]["text"],
+                "sourceUrl": claim["manualSource"]["url"],
+                "sourceLabel": claim["manualSource"]["label"],
+            }]
             with (
                 patch.dict(os.environ, {"RULES_PLEASE_UPLOAD_PDFS": "0"}),
                 patch.object(convex_worker.app_server, "GAMES_BY_ID", {}),
                 patch.object(convex_worker.app_server, "download_pdf", return_value=pdf_path),
                 patch.object(convex_worker, "_preview_metadata", return_value=metadata),
+                patch.object(convex_worker.app_server, "extract_pages", return_value=pages),
+                patch.object(convex_worker.app_server, "validate_rulebook_identity", return_value=metadata["identity"]),
+                patch.object(convex_worker.app_server, "chunk_pages", return_value=chunks),
+                patch.object(convex_worker.app_server, "add_embeddings_to_chunks"),
             ):
                 convex_worker.process_claim(api, claim)
 
         prepared = next(payload for path, payload in api.calls if path == "/worker/jobs/prepare")
         self.assertEqual(prepared["source"]["confidence"], "manual_review")
-        self.assertIn("/worker/jobs/request-approval", [path for path, _ in api.calls])
+        self.assertEqual(prepared["source"]["reviewStatus"], "approved")
+        paths = [path for path, _ in api.calls]
+        self.assertNotIn("/worker/jobs/request-approval", paths)
+        self.assertIn("/worker/jobs/complete", paths)
 
     def test_approved_preview_continues_through_indexing_and_completion(self):
         api = FakeApi()
