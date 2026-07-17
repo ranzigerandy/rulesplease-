@@ -1,0 +1,15 @@
+appId: com.rulesplease.app
+name: Email login survives restart
+---
+- launchApp:
+    clearState: true
+- tapOn: "Email address"
+- inputText: ${TEST_EMAIL}
+- tapOn: "Continue with email"
+- tapOn: "Email verification code"
+- inputText: ${TEST_EMAIL_CODE}
+- tapOn: "Verify & sign in"
+- assertVisible: "What are you playing?"
+- stopApp
+- launchApp
+- assertVisible: "Recent chats"

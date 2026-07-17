@@ -213,6 +213,33 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_thread_and_message", ["chatThreadId", "agentMessageId"]),
 
+  pushTokens: defineTable({
+    userId: v.string(),
+    expoPushToken: v.string(),
+    deviceId: v.string(),
+    platform: v.union(v.literal("android"), v.literal("ios")),
+    active: v.boolean(),
+    lastError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_user_id_and_device_id", ["userId", "deviceId"])
+    .index("by_expo_push_token", ["expoPushToken"]),
+
+  notificationDeliveries: defineTable({
+    jobId: v.id("ingestionJobs"),
+    userId: v.string(),
+    kind: v.union(v.literal("completed"), v.literal("failed")),
+    status: v.union(v.literal("sending"), v.literal("sent"), v.literal("failed")),
+    attempts: v.number(),
+    lastError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_job_id_and_kind", ["jobId", "kind"])
+    .index("by_status", ["status"]),
+
   migrationItems: defineTable({
     key: v.string(),
     importedAt: v.number(),

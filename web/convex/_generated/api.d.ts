@@ -14,6 +14,8 @@ import type * as helpers from "../helpers.js";
 import type * as http from "../http.js";
 import type * as library from "../library.js";
 import type * as migrations from "../migrations.js";
+import type * as notificationActions from "../notificationActions.js";
+import type * as notifications from "../notifications.js";
 import type * as rulesAgent from "../rulesAgent.js";
 import type * as workers from "../workers.js";
 
@@ -30,6 +32,8 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   library: typeof library;
   migrations: typeof migrations;
+  notificationActions: typeof notificationActions;
+  notifications: typeof notifications;
   rulesAgent: typeof rulesAgent;
   workers: typeof workers;
 }>;

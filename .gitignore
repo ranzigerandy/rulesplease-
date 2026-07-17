@@ -2,6 +2,14 @@
 data/
 output/
 __pycache__/
+node_modules/
+mobile/.expo/
+mobile/.eas/
+mobile/android/
+mobile/ios/
+.codex-trash/
+*.jks
+*.keystore
 *.py[cod]
 
 # Local server logs

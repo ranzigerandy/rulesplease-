@@ -14,11 +14,42 @@ import socket
 import time
 import urllib.error
 import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from threading import Thread
 
 import app_server
 
 
 LEASE_MS = 300_000
+HEALTH = {"status": "starting", "workerId": None, "lastJobAt": None, "lastError": None}
+
+
+def log_event(event, **fields):
+    print(json.dumps({"timestamp": time.time(), "event": event, **fields}, default=str), flush=True)
+
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path != "/health":
+            self.send_response(404)
+            self.end_headers()
+            return
+        payload = json.dumps(HEALTH).encode("utf-8")
+        self.send_response(200 if HEALTH["status"] in {"ready", "processing"} else 503)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def log_message(self, _format, *_args):
+        return
+
+
+def start_health_server():
+    port = int(os.environ.get("PORT", "8080"))
+    server = ThreadingHTTPServer(("0.0.0.0", port), HealthHandler)
+    Thread(target=server.serve_forever, name="health-server", daemon=True).start()
+    log_event("health_server_started", port=port)
 
 
 class RulebookIdentityReviewRequired(ValueError):
@@ -247,14 +278,14 @@ def process_claim(api, claim):
                 "/worker/jobs/reuse",
                 {"jobId": job["_id"], "leaseToken": job["leaseToken"]},
             )
-            print(f"Reused indexed rulebook for BGG {bgg_id}")
+            log_event("rulebook_reused", bggId=bgg_id, jobId=job["_id"])
             return
         if prepared["needsApproval"]:
             api.post(
                 "/worker/jobs/request-approval",
                 {"jobId": job["_id"], "leaseToken": job["leaseToken"]},
             )
-            print(f"Waiting for rulebook approval for BGG {bgg_id}")
+            log_event("approval_requested", bggId=bgg_id, jobId=job["_id"])
             return
         approved_source = {
             **preview_candidate,
@@ -399,7 +430,7 @@ def process_claim(api, claim):
             },
         },
     )
-    print(f"Completed BGG {bgg_id}: {len(pages)} pages, {len(chunks)} chunks")
+    log_event("job_completed", bggId=bgg_id, jobId=job["_id"], pages=len(pages), chunks=len(chunks))
 
 
 def main():
@@ -412,6 +443,9 @@ def main():
     app_server.load_catalog()
     api = WorkerApi()
     worker_id = os.environ.get("RULES_PLEASE_WORKER_ID", socket.gethostname())
+    HEALTH.update({"status": "ready", "workerId": worker_id})
+    start_health_server()
+    log_event("worker_ready", workerId=worker_id)
     while True:
         claim = api.post(
             "/worker/jobs/claim",
@@ -419,8 +453,11 @@ def main():
         )
         if claim:
             job = claim["job"]
+            HEALTH.update({"status": "processing", "lastJobAt": time.time(), "lastError": None})
+            log_event("job_claimed", jobId=job["_id"], workerId=worker_id)
             try:
                 process_claim(api, claim)
+                HEALTH["status"] = "ready"
             except Exception as exc:
                 review_required = isinstance(exc, RulebookIdentityReviewRequired) or "OCR" in str(exc)
                 try:
@@ -434,7 +471,8 @@ def main():
                         },
                     )
                 finally:
-                    print(f"Failed job {job['_id']}: {exc}")
+                    HEALTH.update({"status": "ready", "lastError": str(exc)[:500]})
+                    log_event("job_failed", jobId=job["_id"], error=str(exc))
         if args.once:
             return
         time.sleep(max(0.5, args.poll_seconds))

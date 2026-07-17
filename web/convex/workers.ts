@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 
 function assertLease(
@@ -421,6 +422,9 @@ export const complete = internalMutation({
         updatedAt: now,
       });
     }
+    if (!awaitingApproval) {
+      await ctx.scheduler.runAfter(0, internal.notificationActions.sendForJob, { jobId, kind: "completed" });
+    }
     return null;
   },
 });
@@ -454,6 +458,9 @@ export const fail = internalMutation({
         statusMessage: error.slice(0, 500),
         updatedAt: now,
       });
+    }
+    if (!reviewRequired) {
+      await ctx.scheduler.runAfter(0, internal.notificationActions.sendForJob, { jobId, kind: "failed" });
     }
     return null;
   },

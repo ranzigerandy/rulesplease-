@@ -1,0 +1,11 @@
+appId: com.rulesplease.app
+name: Shared rulebook opens immediately
+---
+- launchApp
+- tapOn: "Start a new rules chat"
+- tapOn: "Search games"
+- inputText: "Spectacular"
+- tapOn: "Spectacular"
+- assertVisible: "Your rulebook is ready."
+- tapOn: "Open rules chat"
+- assertVisible: "Ask about the rules"

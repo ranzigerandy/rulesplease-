@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "Rules Please!",
+    "slug": "rules-please",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/rulesplease-app-icon.png",
+    "scheme": "rulesplease",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "icon": "./assets/images/rulesplease-app-icon.png"
+    },
+    "android": {
+      "package": "com.rulesplease.app",
+      "softwareKeyboardLayoutMode": "resize",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/images/rulesplease-app-icon.png"
+      },
+      "predictiveBackGestureEnabled": true,
+      "permissions": ["POST_NOTIFICATIONS"]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/rulesplease-app-icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/images/rulesplease-mascot.png",
+          "imageWidth": 92
+        }
+      ],
+      "expo-secure-store",
+      "expo-document-picker",
+      "expo-notifications"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

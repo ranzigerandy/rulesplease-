@@ -214,6 +214,7 @@ export const listCitations = query({
         : null;
       return {
         ...citation,
+        excerpt: citation.quote,
         quote: chunk?.text ?? citation.quote,
         pdfUrl,
         pageCount: rulebook?.pageCount ?? null,

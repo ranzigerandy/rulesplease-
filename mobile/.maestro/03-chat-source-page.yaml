@@ -1,0 +1,14 @@
+appId: com.rulesplease.app
+name: Cited answer opens the exact PDF page
+---
+- launchApp
+- tapOn: "Ask about the rules"
+- inputText: "How does scoring work?"
+- tapOn: "Send question"
+- extendedWaitUntil:
+    visible: "1 source"
+    timeout: 30000
+- tapOn: "1 source"
+- assertVisible: "Open rulebook"
+- tapOn: "Open rulebook"
+- assertVisible: "Page .*"
