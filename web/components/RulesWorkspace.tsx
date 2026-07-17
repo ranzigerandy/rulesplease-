@@ -894,7 +894,7 @@ function GameCover({ game }: { game: LibraryRow["game"] }) {
   return (
     <span className="game-cover">
       <Image
-        src={game.thumbnailUrl ?? `/api/catalog/thumbnail/${game.bggId}`}
+        src={game.thumbnailUrl ?? `/api/catalog/thumbnail/${game.bggId}?v=2`}
         alt={`${game.name} cover`}
         width={80}
         height={100}
@@ -910,7 +910,7 @@ function SearchResultCover({ game }: { game: GameSearchResult }) {
   if (failed) return <GameMonogram name={game.name} />;
   return (
     <span className="game-cover">
-      <Image src={`/api/catalog/thumbnail/${game.id}`} alt={`${game.name} cover`} width={80} height={100} unoptimized onError={() => setFailed(true)} />
+      <Image src={`/api/catalog/thumbnail/${game.id}?v=2`} alt={`${game.name} cover`} width={80} height={100} unoptimized onError={() => setFailed(true)} />
     </span>
   );
 }

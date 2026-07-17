@@ -24,7 +24,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       });
       if (!gameResponse.ok) return new Response(null, { status: 404 });
       const item = (await gameResponse.json()).item;
-      const thumbnailUrl = item?.images?.tallthumb ?? item?.images?.thumb ?? item?.imageurl;
+      const thumbnailUrl = item?.images?.tallthumb ?? item?.images?.thumb ?? item?.images?.imageurl ?? item?.images?.original;
       if (!thumbnailUrl) return new Response(null, { status: 404 });
       response = await fetch(thumbnailUrl, { cache: "force-cache", signal: AbortSignal.timeout(20_000) });
     } catch {
