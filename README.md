@@ -1,6 +1,6 @@
 # Rules Please!
 
-Board-game rulebook assistant with web and native Android clients. Convex is the central backend, Next.js serves the web frontend and catalog API, Expo/React Native powers Android, and the Python worker handles discovery, PDF extraction and OCR on Railway.
+Board-game rulebook assistant with web and native Android clients. Convex is the central backend, Next.js serves the web frontend and catalog API, Expo/React Native powers Android, and the Python worker handles discovery, PDF extraction and OCR. During the current test phase that worker runs on the development PC; Railway is prepared for a later 24/7 migration.
 
 ## Run the local rollback application
 
@@ -13,6 +13,16 @@ Then open the URL printed by the script (normally `http://localhost:4173`).
 ## Run the Convex application
 
 See [`web/README.md`](web/README.md) for the one-time Convex login, Auth setup, development commands, migration import, worker configuration, and rollback switch.
+
+The live web app and the Android test configuration currently share the
+`tidy-heron-277` Convex deployment. Start their local rulebook worker with:
+
+```powershell
+./scripts/start-convex-worker.ps1
+```
+
+Use `-Environment production` only after both clients have intentionally moved
+to the production Convex deployment.
 
 ## Project structure
 

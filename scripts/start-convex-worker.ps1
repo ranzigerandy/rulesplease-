@@ -1,6 +1,6 @@
 param(
   [ValidateSet("production", "development")]
-  [string]$Environment = "production",
+  [string]$Environment = "development",
   [string]$ConvexSiteUrl
 )
 
