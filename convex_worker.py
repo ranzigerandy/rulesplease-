@@ -72,16 +72,18 @@ def _without_none(value):
     return value
 
 
-def _source_candidates(game, manual_source=None):
+def _source_candidates(game, manual_source=None, excluded_urls=None):
+    excluded_urls = set(excluded_urls or [])
     if manual_source:
-        yield manual_source
+        if manual_source["url"] not in excluded_urls:
+            yield manual_source
         return
     known = app_server.RULEBOOK_SOURCES.get(game["id"])
     candidates = [known] if known else []
     candidates.extend(app_server.discover_rulebook_candidates(game))
     seen = set()
     for candidate in candidates:
-        if not candidate or candidate["url"] in seen:
+        if not candidate or candidate["url"] in seen or candidate["url"] in excluded_urls:
             continue
         seen.add(candidate["url"])
         yield candidate
@@ -117,6 +119,38 @@ def process_claim(api, claim):
     review_reasons = []
     review_candidate = None
     manual_source = claim.get("manualSource")
+    approved_source = claim.get("approvedSource")
+
+    if not approved_source:
+        preview_candidate = next(
+            _source_candidates(game, manual_source, claim.get("rejectedSourceUrls")),
+            None,
+        )
+        if not preview_candidate:
+            raise ValueError("No rulebook source candidate found")
+        prepared = api.post(
+            "/worker/jobs/prepare",
+            {
+                "jobId": job["_id"],
+                "leaseToken": job["leaseToken"],
+                "source": {
+                    "url": preview_candidate["url"],
+                    "label": preview_candidate.get("label", f"{game['name']} rulebook"),
+                    "language": preview_candidate.get("language", "en"),
+                    "edition": preview_candidate.get("edition", "base game"),
+                    "confidence": preview_candidate.get("confidence", "auto"),
+                    "reviewStatus": "review_required",
+                },
+            },
+        )
+        if prepared["needsApproval"]:
+            api.post(
+                "/worker/jobs/request-approval",
+                {"jobId": job["_id"], "leaseToken": job["leaseToken"]},
+            )
+            print(f"Waiting for rulebook approval for BGG {bgg_id}")
+            return
+        approved_source = preview_candidate
 
     _heartbeat(
         api,
@@ -125,7 +159,7 @@ def process_claim(api, claim):
         8,
         "Checking your imported rulebook." if manual_source else "Looking for a matching English rulebook.",
     )
-    for candidate in _source_candidates(game, manual_source):
+    for candidate in [approved_source]:
         try:
             _heartbeat(
                 api,

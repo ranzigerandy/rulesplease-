@@ -95,11 +95,22 @@ const prepare = httpAction(async (ctx, request) => {
   try {
     authorizeWorker(request);
     const input = await body<PrepareInput>(request);
-    const rulebookId = await ctx.runMutation(
+    const prepared = await ctx.runMutation(
       internal.workers.prepareRulebook,
       input,
     );
-    return json({ rulebookId });
+    return json(prepared);
+  } catch (error) {
+    return json({ error: error instanceof Error ? error.message : "Invalid request" }, 400);
+  }
+});
+
+const requestApproval = httpAction(async (ctx, request) => {
+  try {
+    authorizeWorker(request);
+    const input = await body<JobLease>(request);
+    await ctx.runMutation(internal.workers.requestApproval, input);
+    return json({ ok: true });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Invalid request" }, 400);
   }
@@ -150,6 +161,7 @@ const uploadUrl = httpAction(async (ctx, request) => {
 http.route({ path: "/worker/jobs/claim", method: "POST", handler: claim });
 http.route({ path: "/worker/jobs/heartbeat", method: "POST", handler: heartbeat });
 http.route({ path: "/worker/jobs/prepare", method: "POST", handler: prepare });
+http.route({ path: "/worker/jobs/request-approval", method: "POST", handler: requestApproval });
 http.route({ path: "/worker/jobs/chunks", method: "POST", handler: chunks });
 http.route({ path: "/worker/jobs/complete", method: "POST", handler: complete });
 http.route({ path: "/worker/jobs/fail", method: "POST", handler: fail });

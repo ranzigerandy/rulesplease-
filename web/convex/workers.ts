@@ -56,11 +56,30 @@ export const claim = internalMutation({
       ? await ctx.storage.getUrl(job.sourceStorageId)
       : null;
     const manualSourceUrl = uploadedSourceUrl ?? job.sourceUrl ?? null;
+    const rulebook = job.rulebookId ? await ctx.db.get(job.rulebookId) : null;
+    const approvedSource = rulebook ? await ctx.db.get(rulebook.sourceId) : null;
+    const rejectedSources = await ctx.db
+      .query("rulebookSources")
+      .withIndex("by_game", (q) => q.eq("gameId", job.gameId))
+      .order("desc")
+      .take(100);
     return {
       job: { ...job, status: "processing", leaseToken, workerId },
       game: await ctx.db.get(job.gameId),
       libraryGame,
-      rulebook: job.rulebookId ? await ctx.db.get(job.rulebookId) : null,
+      rulebook,
+      approvedSource: approvedSource?.reviewStatus === "approved"
+        ? {
+            url: uploadedSourceUrl ?? approvedSource.url,
+            label: approvedSource.label,
+            language: approvedSource.language,
+            edition: approvedSource.edition,
+            confidence: approvedSource.confidence,
+          }
+        : null,
+      rejectedSourceUrls: rejectedSources
+        .filter((source) => source.reviewStatus === "rejected")
+        .map((source) => source.url),
       manualSource: manualSourceUrl
         ? {
             url: manualSourceUrl,
@@ -112,7 +131,10 @@ export const prepareRulebook = internalMutation({
       reviewStatus: v.union(v.literal("approved"), v.literal("review_required")),
     }),
   },
-  returns: v.id("rulebooks"),
+  returns: v.object({
+    rulebookId: v.id("rulebooks"),
+    needsApproval: v.boolean(),
+  }),
   handler: async (ctx, { jobId, leaseToken, source: input }) => {
     const job = await ctx.db.get(jobId);
     assertLease(job, leaseToken);
@@ -161,7 +183,43 @@ export const prepareRulebook = internalMutation({
           updatedAt: now,
         });
     await ctx.db.patch(jobId, { rulebookId, updatedAt: now });
-    return rulebookId;
+    return { rulebookId, needsApproval: reviewStatus !== "approved" };
+  },
+});
+
+export const requestApproval = internalMutation({
+  args: {
+    jobId: v.id("ingestionJobs"),
+    leaseToken: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, { jobId, leaseToken }) => {
+    const job = await ctx.db.get(jobId);
+    assertLease(job, leaseToken);
+    if (!job?.rulebookId) throw new Error("Rulebook has not been prepared");
+    const now = Date.now();
+    await ctx.db.patch(job.rulebookId, {
+      status: "review_required",
+      updatedAt: now,
+    });
+    await ctx.db.patch(jobId, {
+      status: "review_required",
+      phase: "review_required",
+      statusMessage: "Preview this rulebook before it is indexed.",
+      progress: 15,
+      leaseToken: undefined,
+      leaseExpiresAt: undefined,
+      error: undefined,
+      updatedAt: now,
+    });
+    await ctx.db.patch(job.libraryGameId, {
+      status: "review_required",
+      statusLabel: "Preview rulebook",
+      statusMessage: "Check this source first. Indexing starts only after your approval.",
+      progress: 15,
+      updatedAt: now,
+    });
+    return null;
   },
 });
 

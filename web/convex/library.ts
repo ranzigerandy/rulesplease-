@@ -246,9 +246,18 @@ export const addManualRulebook = mutation({
         .withIndex("by_game", (q) => q.eq("gameId", gameId))
         .order("desc")
         .take(20);
-      for (const rulebook of rulebooks.filter((item) => item.status === "ready")) {
+      for (const rulebook of rulebooks.filter((item) => item.status === "ready" || item.status === "review_required")) {
         await ctx.db.patch(rulebook._id, { status: "failed", updatedAt: now });
         await ctx.db.patch(rulebook.sourceId, { reviewStatus: "rejected" });
+      }
+      for (const job of jobs.filter((item) => item.status === "review_required")) {
+        await ctx.db.patch(job._id, {
+          status: "failed",
+          phase: "failed",
+          statusMessage: "This rulebook source was replaced by a manual import.",
+          error: "Replaced before indexing.",
+          updatedAt: now,
+        });
       }
       if (rulebooks.some((item) => item.status === "ready")) {
         const replacementThread = await rulesAgent.createThread(ctx, {
@@ -370,9 +379,18 @@ export const reportWrongRulebook = mutation({
       .withIndex("by_game", (q) => q.eq("gameId", libraryGame.gameId))
       .order("desc")
       .take(20);
-    for (const rulebook of rulebooks.filter((item) => item.status === "ready")) {
+    for (const rulebook of rulebooks.filter((item) => item.status === "ready" || item.status === "review_required")) {
       await ctx.db.patch(rulebook._id, { status: "failed", updatedAt: now });
       await ctx.db.patch(rulebook.sourceId, { reviewStatus: "rejected" });
+    }
+    for (const job of activeJobs.filter((item) => item.status === "review_required")) {
+      await ctx.db.patch(job._id, {
+        status: "failed",
+        phase: "failed",
+        statusMessage: "This rulebook source was rejected.",
+        error: "Rejected by the user before indexing.",
+        updatedAt: now,
+      });
     }
 
     const game = await ctx.db.get(libraryGame.gameId);
@@ -427,13 +445,46 @@ export const approveRulebook = mutation({
       .withIndex("by_game", (q) => q.eq("gameId", libraryGame.gameId))
       .order("desc")
       .take(20);
-    const rulebook = rulebooks.find((item) => item.status === "review_required");
+    const jobs = await ctx.db
+      .query("ingestionJobs")
+      .withIndex("by_library_game", (q) => q.eq("libraryGameId", libraryGameId))
+      .order("desc")
+      .take(20);
+    const previewJob = jobs.find((item) => item.status === "review_required" && item.rulebookId);
+    const rulebook = previewJob?.rulebookId
+      ? rulebooks.find((item) => item._id === previewJob.rulebookId)
+      : rulebooks.find((item) => item.status === "review_required");
     if (!rulebook) throw new Error("There is no rulebook awaiting approval");
     const source = await ctx.db.get(rulebook.sourceId);
     if (!source) throw new Error("Rulebook source not found");
 
     const now = Date.now();
     await ctx.db.patch(source._id, { reviewStatus: "approved" });
+    const alreadyIndexed = rulebook.pageCount > 0 && rulebook.chunkCount > 0;
+    if (!alreadyIndexed) {
+      const job = previewJob?.rulebookId === rulebook._id ? previewJob : null;
+      if (!job) throw new Error("The rulebook preview job could not be resumed");
+      await ctx.db.patch(rulebook._id, { status: "processing", updatedAt: now });
+      await ctx.db.patch(job._id, {
+        status: "queued",
+        phase: "queued",
+        statusMessage: "Approved. Waiting for the worker to index this rulebook.",
+        progress: 15,
+        leaseToken: undefined,
+        leaseExpiresAt: undefined,
+        error: undefined,
+        updatedAt: now,
+      });
+      await ctx.db.patch(libraryGameId, {
+        status: "queued",
+        statusLabel: "Preparing rulebook",
+        statusMessage: "Approved. Waiting for the worker to index this rulebook.",
+        progress: 15,
+        updatedAt: now,
+      });
+      return null;
+    }
+
     await ctx.db.patch(rulebook._id, { status: "ready", updatedAt: now });
     const libraryGames = await ctx.db
       .query("libraryGames")

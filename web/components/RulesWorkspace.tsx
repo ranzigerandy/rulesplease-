@@ -184,7 +184,7 @@ function WorkspaceContent() {
     try {
       await approveRulebook({ libraryGameId: selected._id });
       toast.success("Rulebook approved", {
-        description: "You can now ask questions about this game.",
+        description: "Indexing has started. The chat will open when it is ready.",
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "The rulebook could not be approved");
@@ -414,7 +414,7 @@ function RulebookApproval({ game, source, approving, replacing, onApprove, onRep
       <div className="approval-mark"><ShieldCheck /></div>
       <span className="approval-eyebrow">Before you start</span>
       <h2 id="rulebook-approval-title">Is this the right rulebook?</h2>
-      <p>Check the game and edition once. We will only open the chat after your approval.</p>
+      <p>Preview the source first. We will only download and index it after your approval.</p>
       <div className="approval-source-card">
         <GameCover game={game} />
         <div>
@@ -434,7 +434,7 @@ function RulebookApproval({ game, source, approving, replacing, onApprove, onRep
           {replacing ? "Looking again…" : "No, find another rulebook"}
         </button>
       </div>
-      <small className="approval-note">This protects your answers from being based on the wrong game or edition.</small>
+      <small className="approval-note">Nothing is indexed until you confirm the game and edition.</small>
     </section>
   );
 }

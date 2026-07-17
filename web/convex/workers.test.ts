@@ -2,14 +2,14 @@
 
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
 
 describe("ingestion worker leases", () => {
-  test("claims once, rejects stale leases, deduplicates chunks, and sends new sources to review", async () => {
-    const t = convexTest(schema, modules);
+  test("pauses for preview before indexing, then resumes the approved job", async () => {
+    const t = convexTest(schema, modules).withIdentity({ subject: "user_clerk_test_owner" });
     const ids = await t.run(async (ctx) => {
       const now = Date.now();
       const userId = "user_clerk_test_owner";
@@ -70,7 +70,7 @@ describe("ingestion worker leases", () => {
       }),
     ).rejects.toThrow("lease");
 
-    const rulebookId = await t.mutation(internal.workers.prepareRulebook, {
+    const prepared = await t.mutation(internal.workers.prepareRulebook, {
       jobId: ids.jobId,
       leaseToken: "lease-one",
       source: {
@@ -79,9 +79,35 @@ describe("ingestion worker leases", () => {
         language: "en",
         edition: "base game",
         confidence: "test",
-        reviewStatus: "approved",
+        reviewStatus: "review_required",
       },
     });
+    expect(prepared.needsApproval).toBe(true);
+    await t.mutation(internal.workers.requestApproval, {
+      jobId: ids.jobId,
+      leaseToken: "lease-one",
+    });
+    const reviewState = await t.run(async (ctx) => ({
+      job: await ctx.db.get(ids.jobId),
+      library: await ctx.db.get(ids.libraryGameId),
+      rulebook: await ctx.db.get(prepared.rulebookId),
+      chunks: await ctx.db.query("rulebookChunks").collect(),
+    }));
+    expect(reviewState.job?.status).toBe("review_required");
+    expect(reviewState.library?.status).toBe("review_required");
+    expect(reviewState.rulebook?.status).toBe("review_required");
+    expect(reviewState.chunks).toHaveLength(0);
+
+    await t.mutation(api.library.approveRulebook, {
+      libraryGameId: ids.libraryGameId,
+    });
+    const resumed = await t.mutation(internal.workers.claim, {
+      workerId: "test-worker",
+      leaseToken: "lease-two",
+      leaseMs: 60_000,
+    });
+    expect(resumed?.job._id).toBe(ids.jobId);
+    expect(resumed?.approvedSource?.url).toBe("https://example.com/sumo.pdf");
     const chunk = {
       page: 2,
       text: "Win a trick when your opponent is on their edge of the dohyo.",
@@ -93,21 +119,21 @@ describe("ingestion worker leases", () => {
     expect(
       await t.mutation(internal.workers.upsertChunks, {
         jobId: ids.jobId,
-        leaseToken: "lease-one",
+        leaseToken: "lease-two",
         chunks: [chunk],
       }),
     ).toBe(1);
     expect(
       await t.mutation(internal.workers.upsertChunks, {
         jobId: ids.jobId,
-        leaseToken: "lease-one",
+        leaseToken: "lease-two",
         chunks: [chunk],
       }),
     ).toBe(0);
 
     await t.mutation(internal.workers.complete, {
       jobId: ids.jobId,
-      leaseToken: "lease-one",
+      leaseToken: "lease-two",
       result: {
         pageCount: 2,
         chunkCount: 1,
@@ -120,11 +146,11 @@ describe("ingestion worker leases", () => {
     const state = await t.run(async (ctx) => ({
       job: await ctx.db.get(ids.jobId),
       library: await ctx.db.get(ids.libraryGameId),
-      rulebook: await ctx.db.get(rulebookId),
+      rulebook: await ctx.db.get(prepared.rulebookId),
     }));
     expect(state.job?.status).toBe("completed");
-    expect(state.library?.status).toBe("review_required");
-    expect(state.rulebook?.status).toBe("review_required");
+    expect(state.library?.status).toBe("ready");
+    expect(state.rulebook?.status).toBe("ready");
   });
 
   test("returns an imported PDF URL as the only manual worker source", async () => {
@@ -137,6 +163,16 @@ describe("ingestion worker leases", () => {
         isExpansion: false,
         createdAt: now,
         updatedAt: now,
+      });
+      await ctx.db.insert("rulebookSources", {
+        gameId,
+        url: "https://example.com/rejected-rules.pdf",
+        label: "Rejected rules",
+        language: "en",
+        confidence: "rejected-test",
+        reviewStatus: "rejected",
+        legalStatus: "unknown",
+        discoveredAt: now,
       });
       const libraryGameId = await ctx.db.insert("libraryGames", {
         userId: "user_import_test",
@@ -175,5 +211,6 @@ describe("ingestion worker leases", () => {
       language: "en",
       confidence: "user-import",
     });
+    expect(claimed?.rejectedSourceUrls).toContain("https://example.com/rejected-rules.pdf");
   });
 });
