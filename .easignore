@@ -1,0 +1,36 @@
+# Keep this in sync with .gitignore. EAS uploads the whole npm workspace.
+data/
+output/
+__pycache__/
+node_modules/
+mobile/.expo/
+mobile/.eas/
+mobile/.eas-inspect-*/
+mobile/android/
+mobile/ios/
+.codex-trash/
+*.jks
+*.keystore
+*.py[cod]
+server-*.log
+*.out.log
+*.err.log
+.DS_Store
+Thumbs.db
+
+# Local generated artifacts that are not needed by the Android cloud build.
+tmp/
+web/.next/
+web/node_modules/
+mobile/node_modules/
+mobile/dist-android/
+mobile/.claude/
+mobile/.vscode/
+
+# The archive root is a workspace, so exclude runtime caches at every depth.
+**/.next/
+**/.convex/
+**/.pytest_cache/
+**/data/
+**/tmp/
+**/.codex-trash/

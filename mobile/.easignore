@@ -1,0 +1,34 @@
+# Mobile app build artifacts and local tooling.
+node_modules/
+.expo/
+dist/
+dist-android/
+web-build/
+expo-env.d.ts
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
+*.pem
+.env*.local
+*.tsbuildinfo
+/android
+/ios
+
+# This Expo app lives in an npm workspace; these parent-repository caches are
+# never required for a native cloud build.
+**/node_modules/
+**/.next/
+**/.convex/
+**/.pytest_cache/
+**/data/
+**/tmp/
+**/.codex-trash/

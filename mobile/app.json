@@ -18,7 +18,9 @@
         "foregroundImage": "./assets/images/rulesplease-app-icon.png"
       },
       "predictiveBackGestureEnabled": true,
-      "permissions": ["POST_NOTIFICATIONS"]
+      "permissions": [
+        "POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "output": "static",
@@ -41,6 +43,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "cef3b3b4-fae1-4929-9833-30fbbf3a21a6"
+      }
+    },
+    "owner": "ranzigerandys-team"
   }
 }
