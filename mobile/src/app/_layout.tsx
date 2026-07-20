@@ -22,6 +22,7 @@ function Navigation() {
   }, []);
   if (!isLoaded) return null;
   return <Stack screenOptions={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: "#FFFFFF" } }}>
+    <Stack.Screen name="sso-callback" options={{ animation: "none" }} />
     <Stack.Protected guard={!isSignedIn}><Stack.Screen name="(auth)" /></Stack.Protected>
     <Stack.Protected guard={Boolean(isSignedIn)}><Stack.Screen name="(app)" /></Stack.Protected>
   </Stack>;
