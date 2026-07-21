@@ -2,7 +2,7 @@
 
 import { describe, expect, test } from "vitest";
 import type { Doc, Id } from "./_generated/dataModel";
-import { selectMinimalEvidence } from "./chat";
+import { answerIsUnsupported, selectMinimalEvidence } from "./chat";
 
 function chunk(page: number, text: string, suffix: string): Doc<"rulebookChunks"> {
   return {
@@ -18,6 +18,12 @@ function chunk(page: number, text: string, suffix: string): Doc<"rulebookChunks"
 }
 
 describe("minimal rulebook evidence", () => {
+  test("recognizes the no-answer marker so no source is saved", () => {
+    expect(answerIsUnsupported("NO_ANSWER")).toBe(true);
+    expect(answerIsUnsupported("no_answer.")).toBe(true);
+    expect(answerIsUnsupported("The excerpts do not say.")).toBe(false);
+  });
+
   test("keeps only the sentence that directly supports a simple tie answer", () => {
     const result = selectMinimalEvidence(
       [

@@ -35,6 +35,14 @@ type ChatAnswer = {
   citations: AnswerCitation[];
 };
 
+const NO_ANSWER = "NO_ANSWER";
+const NO_ANSWER_MESSAGE =
+  "The indexed rulebook does not contain enough information to answer that question.";
+
+export function answerIsUnsupported(answer: string) {
+  return /^NO_ANSWER[.!]?$/i.test(answer.trim());
+}
+
 const STOP_WORDS = new Set([
   "about", "after", "also", "and", "are", "can", "does", "for", "from",
   "game", "has", "have", "how", "into", "its", "most", "not", "question",
@@ -269,8 +277,7 @@ export const ask = action({
     });
 
     if (chunks.length === 0) {
-      const answer =
-        "The indexed rulebook does not contain enough information to answer that question.";
+      const answer = NO_ANSWER_MESSAGE;
       const saved = await rulesAgent.saveMessage(ctx, {
         threadId: context.thread.agentThreadId,
         userId,
@@ -295,7 +302,7 @@ export const ask = action({
           `You answer questions about ${context.game.name} using only the supplied rulebook excerpts.`,
           "Answer the user's latest question directly in at most two short sentences and 60 words.",
           "Do not repeat the question, add headings, show your reasoning, reproduce the excerpts, or mention excerpt numbers.",
-          "If the excerpts do not support the answer, say so briefly. Never add rules from memory.",
+          `If the excerpts do not support the answer, respond with exactly ${NO_ANSWER}. Do not add rules from memory.`,
           `Rulebook excerpts:\n${excerpts}`,
         ].join("\n\n"),
         maxOutputTokens: 800,
@@ -315,16 +322,21 @@ export const ask = action({
       savedMessages?: Array<{ _id: string }>;
       promptMessageId?: string;
     };
-    const answer = result.text.trim();
-    if (!answer) {
+    const generatedAnswer = result.text.trim();
+    if (!generatedAnswer) {
       throw new Error("The AI did not produce a visible answer. Please try again.");
     }
+    const unsupported = answerIsUnsupported(generatedAnswer);
+    const answer = unsupported ? NO_ANSWER_MESSAGE : generatedAnswer;
     const savedAnswer = await rulesAgent.saveMessage(ctx, {
       threadId: context.thread.agentThreadId,
       userId,
       message: { role: "assistant", content: answer },
     });
     const agentMessageId = savedAnswer.messageId;
+    if (unsupported) {
+      return { answer, agentMessageId, citations: [] };
+    }
     const evidence = selectMinimalEvidence(contextChunks, question, answer);
     const citations: AnswerCitation[] = evidence.map(({ chunk, quote }, index) => ({
       chunkId: chunk._id,

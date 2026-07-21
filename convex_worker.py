@@ -447,10 +447,20 @@ def main():
     start_health_server()
     log_event("worker_ready", workerId=worker_id)
     while True:
-        claim = api.post(
-            "/worker/jobs/claim",
-            {"workerId": worker_id, "leaseMs": LEASE_MS},
-        )
+        try:
+            claim = api.post(
+                "/worker/jobs/claim",
+                {"workerId": worker_id, "leaseMs": LEASE_MS},
+            )
+        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as exc:
+            # A short network interruption (or a Convex edge restart) must not
+            # take the long-running ingestion worker offline.
+            HEALTH.update({"status": "ready", "lastError": str(exc)[:500]})
+            log_event("claim_retry", error=str(exc))
+            if args.once:
+                raise
+            time.sleep(max(3.0, args.poll_seconds))
+            continue
         if claim:
             job = claim["job"]
             HEALTH.update({"status": "processing", "lastJobAt": time.time(), "lastError": None})

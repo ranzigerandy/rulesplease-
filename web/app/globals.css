@@ -1171,6 +1171,25 @@
 .import-url-field svg { width: 17px; height: 17px; color: #777; }
 .import-url-field input { height: 42px; padding: 0; border: 0; background: transparent; box-shadow: none; font-size: 14px; }
 .import-url-field input:focus, .import-url-field input:focus-visible { outline: 0; box-shadow: none; }
+.import-expansions { display: grid; gap: 10px; padding-top: 16px; border-top: 1px solid rgba(13,13,13,.09); }
+.import-expansions > div:first-child { display: grid; gap: 3px; }
+.import-expansions h3 { margin: 0; color: #111; font-size: 16px; line-height: 1.2; }
+.import-expansions p { margin: 0; color: #6f6f6f; font-size: 12px; line-height: 1.45; }
+.selected-expansions { display: flex; flex-wrap: wrap; gap: 7px; }
+.selected-expansions button { display: inline-flex; max-width: 100%; align-items: center; gap: 5px; padding: 7px 9px 7px 11px; border: 0; border-radius: 999px; color: #124d41; background: #e6f4ef; font-size: 12px; font-weight: 650; }
+.selected-expansions button svg { width: 14px; height: 14px; }
+.expansion-search { min-height: 46px; display: grid; grid-template-columns: 17px minmax(0,1fr) 17px; align-items: center; gap: 8px; padding: 0 12px; border-radius: 13px; background: #f2f2f2; }
+.expansion-search svg { width: 17px; height: 17px; color: #777; }
+.expansion-search input { height: 40px; padding: 0; border: 0; background: transparent; box-shadow: none; font-size: 14px; }
+.expansion-search input:focus, .expansion-search input:focus-visible { outline: 0; box-shadow: none; }
+.expansion-result { width: 100%; display: grid; grid-template-columns: 36px minmax(0,1fr) 30px; align-items: center; gap: 10px; padding: 3px 0; border: 0; color: #111; background: transparent; text-align: left; }
+.expansion-result .game-cover, .expansion-result .game-monogram { width: 36px; height: 44px; border-radius: 7px; }
+.expansion-result > span { min-width: 0; display: grid; gap: 3px; }
+.expansion-result strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.expansion-result small { color: #777; font-size: 11px; }
+.expansion-result i { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid rgba(13,13,13,.12); border-radius: 50%; font-style: normal; }
+.expansion-result i.selected { border-color: #16846b; color: #fff; background: #16846b; }
+.expansion-result i svg { width: 16px; height: 16px; }
 .import-safety-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: #696969; font-size: 12px; line-height: 1.4; }
 .import-safety-note svg { width: 16px; height: 16px; flex: 0 0 auto; color: #16846b; }
 .import-submit { min-height: 48px; border-radius: 999px; }
