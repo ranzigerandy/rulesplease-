@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   BookOpenCheck,
   BookOpenText,
+  Check,
   ChevronRight,
   CircleAlert,
   Dices,
@@ -50,7 +51,7 @@ type GameSearchResult = {
   expansion?: boolean;
 };
 
-type ManualRulebookInput = { file?: File; url?: string };
+type ManualRulebookInput = { file?: File; url?: string; expansions?: GameSearchResult[] };
 
 type LibraryRow = {
   _id: Id<"libraryGames">;
@@ -280,6 +281,17 @@ function WorkspaceContent() {
       ...(sourceStorageId ? { sourceStorageId } : {}),
       ...(input.file ? { fileName: input.file.name } : {}),
     });
+    await Promise.all((input.expansions ?? []).map((expansion) => addGame({
+      game: {
+        bggId: expansion.id,
+        name: expansion.name,
+        isExpansion: true,
+        ...(expansion.year !== undefined ? { year: expansion.year } : {}),
+        ...(expansion.rank !== undefined ? { rank: expansion.rank } : {}),
+        ...(expansion.average !== undefined ? { average: expansion.average } : {}),
+        ...(expansion.users !== undefined ? { usersRated: expansion.users } : {}),
+      },
+    })));
     openChat(id);
     toast.success("Rulebook imported", {
       description: "The worker will verify it before the chat opens.",
@@ -524,24 +536,19 @@ function RulebookApproval({ game, source, rulebook, previewPdfUrl, approving, re
   return (
     <section className="rulebook-approval" aria-labelledby="rulebook-approval-title">
       <div className="approval-mark"><ShieldCheck /></div>
-      <span className="approval-eyebrow">Before you start</span>
       <h2 id="rulebook-approval-title">Is this the right rulebook?</h2>
-      <p>Preview the source first. We will only download and index it after your approval.</p>
       {previewPdfUrl && <PdfFirstPagePreview url={previewPdfUrl} label={`${gameName} rulebook cover`} />}
       <div className="approval-source-card">
         <GameCover game={game} />
         <div>
           <strong>{gameName}</strong>
-          <span>{source.edition ?? "Base game"} · {source.language.toUpperCase()}</span>
+          <span>{source.language.toUpperCase()}</span>
           <small>{source.label}</small>
         </div>
       </div>
       <dl className="approval-metadata">
         <div><dt>Pages</dt><dd>{source.pageCount ?? rulebook?.pageCount ?? "—"}</dd></div>
         <div><dt>File</dt><dd>{formatFileSize(source.fileSize)}</dd></div>
-        <div><dt>Edition</dt><dd>{source.edition ?? "Base game"}</dd></div>
-        <div><dt>Revision</dt><dd>{source.revision ?? "Not specified"}</dd></div>
-        {(source.documentHash ?? rulebook?.documentHash) && <div className="metadata-wide"><dt>Document ID</dt><dd>{(source.documentHash ?? rulebook?.documentHash)?.slice(0, 12)}</dd></div>}
       </dl>
       <a className="approval-preview" href={source.url} target="_blank" rel="noreferrer">Preview rulebook <ExternalLink /></a>
       <div className="approval-actions">
@@ -557,7 +564,6 @@ function RulebookApproval({ game, source, rulebook, previewPdfUrl, approving, re
           <FileUp />Upload a rulebook PDF
         </button>
       </div>
-      <small className="approval-note">Nothing is indexed until you confirm the game and edition.</small>
     </section>
   );
 }
@@ -1076,7 +1082,37 @@ function RulebookImportSheet({ game, onClose, onImport }: { game: GameSearchResu
   const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState("");
   const [importing, setImporting] = useState(false);
+  const [expansionQuery, setExpansionQuery] = useState("");
+  const [expansionResults, setExpansionResults] = useState<GameSearchResult[]>([]);
+  const [expansionLoading, setExpansionLoading] = useState(false);
+  const [expansions, setExpansions] = useState<GameSearchResult[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (expansionQuery.trim().length < 2) return;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setExpansionLoading(true);
+      try {
+        const response = await fetch(`/api/catalog/search?q=${encodeURIComponent(expansionQuery.trim())}`, { signal: controller.signal });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error ?? "Catalogue search failed");
+        setExpansionResults((data.results ?? []).filter((candidate: GameSearchResult) => candidate.expansion && candidate.id !== game.id));
+      } catch (error) {
+        if (!controller.signal.aborted) toast.error(error instanceof Error ? error.message : "Expansion search failed");
+      } finally {
+        if (!controller.signal.aborted) setExpansionLoading(false);
+      }
+    }, 320);
+    return () => { window.clearTimeout(timeout); controller.abort(); };
+  }, [expansionQuery, game.id]);
+  const visibleExpansionResults = expansionQuery.trim().length < 2 ? [] : expansionResults;
+
+  function toggleExpansion(expansion: GameSearchResult) {
+    setExpansions((selected) => selected.some((item) => item.id === expansion.id)
+      ? selected.filter((item) => item.id !== expansion.id)
+      : [...selected, expansion]);
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1084,7 +1120,7 @@ function RulebookImportSheet({ game, onClose, onImport }: { game: GameSearchResu
     if (method === "url" && !url.trim()) return;
     setImporting(true);
     try {
-      await onImport(method === "file" ? { file: file! } : { url: url.trim() });
+      await onImport({ ...(method === "file" ? { file: file! } : { url: url.trim() }), expansions });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "The rulebook could not be imported");
     } finally {
@@ -1117,6 +1153,15 @@ function RulebookImportSheet({ game, onClose, onImport }: { game: GameSearchResu
           ) : (
             <label className="import-url-field"><span>Direct PDF URL</span><div><Link2 /><Input type="url" inputMode="url" autoCapitalize="none" autoCorrect="off" placeholder="https://example.com/rulebook.pdf" value={url} onChange={(event) => setUrl(event.target.value)} /></div></label>
           )}
+          <section className="import-expansions" aria-labelledby="import-expansions-title">
+            <div><h3 id="import-expansions-title">Add expansions</h3><p>Select one or more BGG expansions. Each gets its own rulebook and rules chat.</p></div>
+            {expansions.length > 0 && <div className="selected-expansions">{expansions.map((expansion) => <button type="button" key={expansion.id} onClick={() => toggleExpansion(expansion)}>{expansion.name}<X /></button>)}</div>}
+            <label className="expansion-search"><Search /><Input type="search" placeholder="Search expansions" value={expansionQuery} onChange={(event) => setExpansionQuery(event.target.value)} />{expansionLoading && <LoaderCircle className="spin" />}</label>
+            {visibleExpansionResults.map((expansion) => {
+              const selected = expansions.some((item) => item.id === expansion.id);
+              return <button type="button" className="expansion-result" key={expansion.id} onClick={() => toggleExpansion(expansion)}><SearchResultCover game={expansion} /><span><strong>{expansion.name}</strong><small>{expansion.year ?? "Expansion"}</small></span><i className={selected ? "selected" : ""}>{selected ? <Check /> : <Plus />}</i></button>;
+            })}
+          </section>
           <p className="import-safety-note"><ShieldCheck />We verify the game and edition before the chat opens.</p>
           <Button className="import-submit" disabled={importing || (method === "file" ? !file : !url.trim())}>
             {importing ? <LoaderCircle className="spin" /> : <FileUp />}
