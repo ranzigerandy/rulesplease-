@@ -18,6 +18,7 @@ type AuthorizedContext = {
   libraryGame: Doc<"libraryGames">;
   game: Doc<"games">;
   rulebook: Doc<"rulebooks">;
+  expansions: Array<{ game: Doc<"games">; rulebook: Doc<"rulebooks"> }>;
 };
 
 type AnswerCitation = {
@@ -261,11 +262,16 @@ export const ask = action({
       ),
       value: question,
     });
-    const matches = await ctx.vectorSearch("rulebookChunks", "by_embedding", {
+    const rulebookSearches = [
+      ...context.expansions.map((expansion) => ({ rulebookId: expansion.rulebook._id, limit: 4 })),
+      { rulebookId: context.rulebook._id, limit: 4 },
+    ];
+    const matchGroups = await Promise.all(rulebookSearches.map((source) => ctx.vectorSearch("rulebookChunks", "by_embedding", {
       vector: embedding,
-      limit: 6,
-      filter: (q) => q.eq("rulebookId", context.rulebook._id),
-    });
+      limit: source.limit,
+      filter: (q) => q.eq("rulebookId", source.rulebookId),
+    })));
+    const matches = matchGroups.flat();
     const chunks = (await ctx.runQuery(internal.chatInternal.chunksById, {
       ids: matches.map((match) => match._id),
     })) as Doc<"rulebookChunks">[];
@@ -286,11 +292,12 @@ export const ask = action({
       return { answer, agentMessageId: saved.messageId, citations: [] };
     }
 
-    const contextChunks = chunks.slice(0, 4);
+    const contextChunks = chunks.slice(0, 6);
+    const expansionRulebookIds = new Set(context.expansions.map((expansion) => expansion.rulebook._id));
     const excerpts = contextChunks
       .map(
         (chunk, index) =>
-          `[Source ${index + 1} · page ${chunk.page}]\n${chunk.text}`,
+          `[${expansionRulebookIds.has(chunk.rulebookId) ? "EXPANSION RULEBOOK — takes precedence" : "BASE GAME RULEBOOK"} · Source ${index + 1} · page ${chunk.page}]\n${chunk.text}`,
       )
       .join("\n\n");
     const result = (await rulesAgent.generateText(
@@ -300,6 +307,7 @@ export const ask = action({
         promptMessageId: savedQuestion.messageId,
         system: [
           `You answer questions about ${context.game.name} using only the supplied rulebook excerpts.`,
+          "When an expansion rule conflicts with the base-game rulebook, always follow the expansion rule and say that it overrides the base game when relevant.",
           "Answer the user's latest question directly in at most two short sentences and 60 words.",
           "Do not repeat the question, add headings, show your reasoning, reproduce the excerpts, or mention excerpt numbers.",
           `If the excerpts do not support the answer, respond with exactly ${NO_ANSWER}. Do not add rules from memory.`,

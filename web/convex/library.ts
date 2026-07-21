@@ -26,7 +26,7 @@ export const list = query({
       .take(100);
 
     return Promise.all(
-      rows.map(async (libraryGame) => {
+      rows.filter((libraryGame) => !libraryGame.parentLibraryGameId).map(async (libraryGame) => {
         const game = await ctx.db.get(libraryGame.gameId);
         const jobs = await ctx.db
           .query("ingestionJobs")
@@ -64,6 +64,19 @@ export const list = query({
         const isActive =
           job && (job.status === "queued" || job.status === "processing");
         const phase = job?.phase ?? libraryGame.status;
+        const expansionRows = await ctx.db
+          .query("libraryGames")
+          .withIndex("by_parent_library_game_id", (q) => q.eq("parentLibraryGameId", libraryGame._id))
+          .take(20);
+        const expansions = await Promise.all(expansionRows.map(async (expansion) => {
+          const expansionGame = await ctx.db.get(expansion.gameId);
+          return expansionGame ? {
+            libraryGameId: expansion._id,
+            game: expansionGame,
+            status: expansion.status,
+            statusLabel: expansion.statusLabel,
+          } : null;
+        }));
         return {
           ...libraryGame,
           status: isActive ? phase : libraryGame.status,
@@ -84,6 +97,7 @@ export const list = query({
           previewPdfUrl,
           sharedRulebook: Boolean(activeRulebook?.status === "ready"),
           reusedSharedRulebook: Boolean(libraryGame.reusedSharedRulebook),
+          expansions: expansions.filter((expansion) => expansion !== null),
         };
       }),
     );
@@ -183,6 +197,57 @@ export const add = mutation({
       }
     }
     return libraryGameId;
+  },
+});
+
+export const addExpansions = mutation({
+  args: { libraryGameId: v.id("libraryGames"), games: v.array(gameInput) },
+  returns: v.null(),
+  handler: async (ctx, { libraryGameId, games: inputs }) => {
+    const userId = await requireUserId(ctx);
+    const parent = await ctx.db.get(libraryGameId);
+    if (!parent || parent.userId !== userId) throw new Error("Library game not found");
+    const now = Date.now();
+    for (const input of inputs) {
+      if (!input.isExpansion) throw new Error("Only expansions can be attached to this chat");
+      let game = await ctx.db.query("games").withIndex("by_bgg_id", (q) => q.eq("bggId", input.bggId)).unique();
+      if (game) await ctx.db.patch(game._id, { ...input, updatedAt: now });
+      else {
+        const gameId = await ctx.db.insert("games", { ...input, createdAt: now, updatedAt: now });
+        game = await ctx.db.get(gameId);
+      }
+      if (!game) throw new Error("Could not create expansion");
+      let expansion = await ctx.db.query("libraryGames").withIndex("by_user_and_game", (q) => q.eq("userId", userId).eq("gameId", game!._id)).unique();
+      const rulebooks = await ctx.db.query("rulebooks").withIndex("by_game", (q) => q.eq("gameId", game!._id)).order("desc").take(20);
+      const readyRulebook = rulebooks.find((rulebook) => rulebook.status === "ready" && rulebook.globalStatus !== "reported" && rulebook.globalStatus !== "deprecated");
+      if (expansion) {
+        await ctx.db.patch(expansion._id, { parentLibraryGameId: libraryGameId, ...(readyRulebook ? { rulebookId: readyRulebook._id, status: "ready", statusLabel: "Ready", statusMessage: "Expansion rulebook is ready.", progress: 100 } : {}), updatedAt: now });
+      } else {
+        const expansionId = await ctx.db.insert("libraryGames", { userId, gameId: game._id, parentLibraryGameId: libraryGameId, ...(readyRulebook ? { rulebookId: readyRulebook._id, reusedSharedRulebook: true, status: "ready", statusLabel: "Ready", statusMessage: "Expansion rulebook is ready.", progress: 100 } : { status: "queued", statusLabel: "Queued", statusMessage: "Waiting for the rulebook worker.", progress: 0 }), addedAt: now, updatedAt: now });
+        expansion = await ctx.db.get(expansionId);
+      }
+      if (!readyRulebook && expansion) {
+        const key = `${userId}:${input.bggId}:expansion:${libraryGameId}`;
+        const prior = await ctx.db.query("ingestionJobs").withIndex("by_idempotency_key", (q) => q.eq("idempotencyKey", key)).unique();
+        if (!prior) await ctx.db.insert("ingestionJobs", { userId, libraryGameId: expansion._id, gameId: game._id, status: "queued", phase: "queued", progress: 0, attempts: 0, idempotencyKey: key, createdAt: now, updatedAt: now });
+      }
+    }
+    return null;
+  },
+});
+
+export const removeExpansion = mutation({
+  args: { libraryGameId: v.id("libraryGames"), expansionLibraryGameId: v.id("libraryGames") },
+  returns: v.null(),
+  handler: async (ctx, { libraryGameId, expansionLibraryGameId }) => {
+    const userId = await requireUserId(ctx);
+    const expansion = await ctx.db.get(expansionLibraryGameId);
+    if (!expansion || expansion.userId !== userId || expansion.parentLibraryGameId !== libraryGameId) throw new Error("Expansion is not attached to this chat");
+    const jobs = await ctx.db.query("ingestionJobs").withIndex("by_library_game", (q) => q.eq("libraryGameId", expansionLibraryGameId)).take(20);
+    if (jobs.some((job) => job.status === "processing")) throw new Error("Wait for the expansion rulebook to finish processing before removing it");
+    for (const job of jobs) await ctx.db.delete(job._id);
+    await ctx.db.delete(expansionLibraryGameId);
+    return null;
   },
 });
 

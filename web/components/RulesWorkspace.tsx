@@ -90,6 +90,7 @@ type LibraryRow = {
   previewPdfUrl?: string | null;
   sharedRulebook?: boolean;
   reusedSharedRulebook?: boolean;
+  expansions?: Array<{ libraryGameId: Id<"libraryGames">; game: { bggId: number; name: string; year?: number }; status: string; statusLabel: string }>;
 };
 
 type ChatMessage = {
@@ -130,6 +131,8 @@ function WorkspaceContent() {
   const { user } = useUser();
   const library = useQuery(api.library.list) as LibraryRow[] | undefined;
   const addGame = useMutation(api.library.add);
+  const addExpansions = useMutation(api.library.addExpansions);
+  const removeExpansion = useMutation(api.library.removeExpansion);
   const addManualRulebook = useMutation(api.library.addManualRulebook);
   const generateRulebookUploadUrl = useMutation(api.library.generateRulebookUploadUrl);
   const reportWrongRulebook = useMutation(api.library.reportWrongRulebook);
@@ -251,17 +254,8 @@ function WorkspaceContent() {
   }
 
   async function addExpansionGames(expansions: GameSearchResult[]) {
-    await Promise.all(expansions.map((expansion) => addGame({
-      game: {
-        bggId: expansion.id,
-        name: expansion.name,
-        isExpansion: true,
-        ...(expansion.year !== undefined ? { year: expansion.year } : {}),
-        ...(expansion.rank !== undefined ? { rank: expansion.rank } : {}),
-        ...(expansion.average !== undefined ? { average: expansion.average } : {}),
-        ...(expansion.users !== undefined ? { usersRated: expansion.users } : {}),
-      },
-    })));
+    if (!selected) return;
+    await addExpansions({ libraryGameId: selected._id, games: expansions.map((expansion) => ({ bggId: expansion.id, name: expansion.name, isExpansion: true, ...(expansion.year !== undefined ? { year: expansion.year } : {}), ...(expansion.rank !== undefined ? { rank: expansion.rank } : {}), ...(expansion.average !== undefined ? { average: expansion.average } : {}), ...(expansion.users !== undefined ? { usersRated: expansion.users } : {}) })) });
     toast.success(expansions.length === 1 ? "Expansion added" : `${expansions.length} expansions added`);
   }
 
@@ -418,11 +412,13 @@ function WorkspaceContent() {
                   source={selected.rulebookSource ?? null}
                   rulebook={selected.rulebook ?? null}
                   gameId={selected.game?.bggId}
+                  expansions={selected.expansions ?? []}
                   reusedSharedRulebook={selected.reusedSharedRulebook}
                   replacing={replacingRulebook}
                   onClose={() => setShowRulebookInfo(false)}
                   onReplace={() => void replaceWrongRulebook()}
                   onAddExpansions={addExpansionGames}
+                  onRemoveExpansion={async (expansionLibraryGameId) => { await removeExpansion({ libraryGameId: selected._id, expansionLibraryGameId }); toast.success("Expansion removed from this chat"); }}
                 />
               )}
               {showRulebookImport && selectedImportGame && (
@@ -611,7 +607,7 @@ function RulebookRetry({ gameName, reason, replacing, onReplace, onImport }: { g
   );
 }
 
-function RulebookInfoSheet({ gameName, gameId, source, rulebook, reusedSharedRulebook, replacing, onClose, onReplace, onAddExpansions }: { gameName: string; gameId?: number; source: LibraryRow["rulebookSource"]; rulebook: LibraryRow["rulebook"]; reusedSharedRulebook?: boolean; replacing: boolean; onClose: () => void; onReplace: () => void; onAddExpansions: (expansions: GameSearchResult[]) => Promise<void> }) {
+function RulebookInfoSheet({ gameName, gameId, source, rulebook, expansions, reusedSharedRulebook, replacing, onClose, onReplace, onAddExpansions, onRemoveExpansion }: { gameName: string; gameId?: number; source: LibraryRow["rulebookSource"]; rulebook: LibraryRow["rulebook"]; expansions: NonNullable<LibraryRow["expansions"]>; reusedSharedRulebook?: boolean; replacing: boolean; onClose: () => void; onReplace: () => void; onAddExpansions: (expansions: GameSearchResult[]) => Promise<void>; onRemoveExpansion: (expansionLibraryGameId: Id<"libraryGames">) => Promise<void> }) {
   const [showExpansions, setShowExpansions] = useState(false);
   return (
     <div className="source-backdrop" role="presentation" onMouseDown={onClose}>
@@ -633,6 +629,7 @@ function RulebookInfoSheet({ gameName, gameId, source, rulebook, reusedSharedRul
           {source?.url && <a className="rulebook-source-link" href={source.url} target="_blank" rel="noreferrer">Open complete rulebook <ExternalLink /></a>}
           <section className="rulebook-expansions" aria-labelledby="rulebook-expansions-title">
             <div><h3 id="rulebook-expansions-title">Play with expansions?</h3><p>Add one or more BGG expansions. Each gets its own rulebook and rules chat.</p></div>
+            {expansions.length > 0 && <div className="attached-expansions">{expansions.map((expansion) => <div key={expansion.libraryGameId}><span><strong>{expansion.game.name}</strong><small>{expansion.status === "ready" ? "Included in this chat" : expansion.statusLabel}</small></span><button type="button" aria-label={`Remove ${expansion.game.name}`} onClick={() => void onRemoveExpansion(expansion.libraryGameId)}><X /></button></div>)}</div>}
             {!showExpansions ? <button type="button" className="add-expansions-button" onClick={() => setShowExpansions(true)}><Plus />Add expansions</button> : <ExpansionPicker excludeGameId={gameId} onAdd={async (expansions) => { await onAddExpansions(expansions); setShowExpansions(false); }} />}
           </section>
           <div className="wrong-rulebook-card">

@@ -781,6 +781,13 @@
 .add-expansions-button, .add-expansions-submit { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 13px; border: 0; border-radius: 999px; color: #fff; background: #16846b; font-size: 13px; font-weight: 650; }
 .add-expansions-button svg, .add-expansions-submit svg { width: 16px; height: 16px; }
 .rulebook-expansion-picker { display: grid; gap: 9px; }
+.attached-expansions { display: grid; gap: 7px; }
+.attached-expansions > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border-radius: 11px; background: #fff; }
+.attached-expansions span { min-width: 0; display: grid; gap: 2px; }
+.attached-expansions strong { overflow: hidden; color: #173f36; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.attached-expansions small { color: #638278; font-size: 11px; }
+.attached-expansions button { width: 28px; height: 28px; display: grid; flex: 0 0 auto; place-items: center; padding: 0; border: 0; border-radius: 50%; color: #80564e; background: #fff0ed; }
+.attached-expansions button svg { width: 15px; height: 15px; }
 .rulebook-expansion-picker .expansion-result { padding-inline: 2px; }
 .rulebook-expansion-picker .selected-expansions { margin-bottom: 1px; }
 .add-expansions-submit:disabled { cursor: not-allowed; opacity: .48; }

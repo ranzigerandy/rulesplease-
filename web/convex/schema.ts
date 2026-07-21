@@ -39,6 +39,7 @@ export default defineSchema({
   libraryGames: defineTable({
     userId: v.string(),
     gameId: v.id("games"),
+    parentLibraryGameId: v.optional(v.id("libraryGames")),
     rulebookId: v.optional(v.id("rulebooks")),
     reusedSharedRulebook: v.optional(v.boolean()),
     status: libraryStatus,
@@ -50,6 +51,7 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_and_game", ["userId", "gameId"])
+    .index("by_parent_library_game_id", ["parentLibraryGameId"])
     .index("by_game_and_status", ["gameId", "status"])
     .index("by_rulebook_id", ["rulebookId"]),
 

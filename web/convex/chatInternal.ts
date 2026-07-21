@@ -35,7 +35,20 @@ export const authorizedContext = internalQuery({
           (candidate) => candidate.status === "ready" && candidate.globalStatus !== "reported" && candidate.globalStatus !== "deprecated",
         );
     if (!game || !rulebook) throw new Error("Rulebook is not ready");
-    return { thread, libraryGame, game, rulebook };
+    const expansionLibraries = await ctx.db
+      .query("libraryGames")
+      .withIndex("by_parent_library_game_id", (q) => q.eq("parentLibraryGameId", libraryGame._id))
+      .take(20);
+    const expansions = await Promise.all(expansionLibraries.map(async (expansionLibrary) => {
+      const expansionGame = await ctx.db.get(expansionLibrary.gameId);
+      const expansionRulebook = expansionLibrary.rulebookId
+        ? await ctx.db.get(expansionLibrary.rulebookId)
+        : null;
+      return expansionGame && expansionRulebook?.status === "ready"
+        ? { game: expansionGame, rulebook: expansionRulebook }
+        : null;
+    }));
+    return { thread, libraryGame, game, rulebook, expansions: expansions.filter((item) => item !== null) };
   },
 });
 

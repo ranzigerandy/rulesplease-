@@ -12,6 +12,7 @@ export type LibraryRow = {
   previewPdfUrl?: string | null;
   sharedRulebook?: boolean;
   reusedSharedRulebook?: boolean;
+  expansions?: { libraryGameId: Id<"libraryGames">; game: { bggId: number; name: string; year?: number }; status: string; statusLabel: string }[];
 };
 
 export type ChatMessage = { id: string; role: "user" | "assistant" | "system"; parts?: { type: string; text?: string }[]; text?: string };
