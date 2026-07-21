@@ -250,6 +250,21 @@ function WorkspaceContent() {
     toast.success(`${game.name} added`);
   }
 
+  async function addExpansionGames(expansions: GameSearchResult[]) {
+    await Promise.all(expansions.map((expansion) => addGame({
+      game: {
+        bggId: expansion.id,
+        name: expansion.name,
+        isExpansion: true,
+        ...(expansion.year !== undefined ? { year: expansion.year } : {}),
+        ...(expansion.rank !== undefined ? { rank: expansion.rank } : {}),
+        ...(expansion.average !== undefined ? { average: expansion.average } : {}),
+        ...(expansion.users !== undefined ? { usersRated: expansion.users } : {}),
+      },
+    })));
+    toast.success(expansions.length === 1 ? "Expansion added" : `${expansions.length} expansions added`);
+  }
+
   async function importRulebook(game: GameSearchResult, input: ManualRulebookInput) {
     let sourceStorageId: Id<"_storage"> | undefined;
     if (input.file) {
@@ -402,10 +417,12 @@ function WorkspaceContent() {
                   gameName={selected.game?.name ?? "This game"}
                   source={selected.rulebookSource ?? null}
                   rulebook={selected.rulebook ?? null}
+                  gameId={selected.game?.bggId}
                   reusedSharedRulebook={selected.reusedSharedRulebook}
                   replacing={replacingRulebook}
                   onClose={() => setShowRulebookInfo(false)}
                   onReplace={() => void replaceWrongRulebook()}
+                  onAddExpansions={addExpansionGames}
                 />
               )}
               {showRulebookImport && selectedImportGame && (
@@ -594,7 +611,8 @@ function RulebookRetry({ gameName, reason, replacing, onReplace, onImport }: { g
   );
 }
 
-function RulebookInfoSheet({ gameName, source, rulebook, reusedSharedRulebook, replacing, onClose, onReplace }: { gameName: string; source: LibraryRow["rulebookSource"]; rulebook: LibraryRow["rulebook"]; reusedSharedRulebook?: boolean; replacing: boolean; onClose: () => void; onReplace: () => void }) {
+function RulebookInfoSheet({ gameName, gameId, source, rulebook, reusedSharedRulebook, replacing, onClose, onReplace, onAddExpansions }: { gameName: string; gameId?: number; source: LibraryRow["rulebookSource"]; rulebook: LibraryRow["rulebook"]; reusedSharedRulebook?: boolean; replacing: boolean; onClose: () => void; onReplace: () => void; onAddExpansions: (expansions: GameSearchResult[]) => Promise<void> }) {
+  const [showExpansions, setShowExpansions] = useState(false);
   return (
     <div className="source-backdrop" role="presentation" onMouseDown={onClose}>
       <section className="source-sheet rulebook-info-sheet" role="dialog" aria-modal="true" aria-label={`${gameName} rulebook information`} onMouseDown={(event) => event.stopPropagation()}>
@@ -613,6 +631,10 @@ function RulebookInfoSheet({ gameName, source, rulebook, reusedSharedRulebook, r
             <div><dt>Revision</dt><dd>{source?.revision ?? "Not specified"}</dd></div>
           </dl>
           {source?.url && <a className="rulebook-source-link" href={source.url} target="_blank" rel="noreferrer">Open complete rulebook <ExternalLink /></a>}
+          <section className="rulebook-expansions" aria-labelledby="rulebook-expansions-title">
+            <div><h3 id="rulebook-expansions-title">Play with expansions?</h3><p>Add one or more BGG expansions. Each gets its own rulebook and rules chat.</p></div>
+            {!showExpansions ? <button type="button" className="add-expansions-button" onClick={() => setShowExpansions(true)}><Plus />Add expansions</button> : <ExpansionPicker excludeGameId={gameId} onAdd={async (expansions) => { await onAddExpansions(expansions); setShowExpansions(false); }} />}
+          </section>
           <div className="wrong-rulebook-card">
             <TriangleAlert />
             <div><strong>Wrong game or edition?</strong><p>Reject this source and rebuild the chat from a newly verified base-game rulebook.</p></div>
@@ -622,6 +644,40 @@ function RulebookInfoSheet({ gameName, source, rulebook, reusedSharedRulebook, r
       </section>
     </div>
   );
+}
+
+function ExpansionPicker({ excludeGameId, onAdd }: { excludeGameId?: number; onAdd: (expansions: GameSearchResult[]) => Promise<void> }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<GameSearchResult[]>([]);
+  const [selected, setSelected] = useState<GameSearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    if (query.trim().length < 2) return;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/catalog/search?q=${encodeURIComponent(query.trim())}`, { signal: controller.signal });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error ?? "Catalogue search failed");
+        setResults((data.results ?? []).filter((candidate: GameSearchResult) => candidate.expansion && candidate.id !== excludeGameId));
+      } catch (error) {
+        if (!controller.signal.aborted) toast.error(error instanceof Error ? error.message : "Expansion search failed");
+      } finally { if (!controller.signal.aborted) setLoading(false); }
+    }, 320);
+    return () => { window.clearTimeout(timeout); controller.abort(); };
+  }, [query, excludeGameId]);
+  const visibleResults = query.trim().length < 2 ? [] : results;
+  const toggle = (expansion: GameSearchResult) => setSelected((current) => current.some((item) => item.id === expansion.id) ? current.filter((item) => item.id !== expansion.id) : [...current, expansion]);
+
+  return <div className="rulebook-expansion-picker">
+    {selected.length > 0 && <div className="selected-expansions">{selected.map((expansion) => <button type="button" key={expansion.id} onClick={() => toggle(expansion)}>{expansion.name}<X /></button>)}</div>}
+    <label className="expansion-search"><Search /><Input type="search" placeholder="Search expansions" value={query} onChange={(event) => setQuery(event.target.value)} />{loading && <LoaderCircle className="spin" />}</label>
+    {visibleResults.map((expansion) => { const isSelected = selected.some((item) => item.id === expansion.id); return <button type="button" className="expansion-result" key={expansion.id} onClick={() => toggle(expansion)}><SearchResultCover game={expansion} /><span><strong>{expansion.name}</strong><small>{expansion.year ?? "Expansion"}</small></span><i className={isSelected ? "selected" : ""}>{isSelected ? <Check /> : <Plus />}</i></button>; })}
+    <Button type="button" className="add-expansions-submit" disabled={adding || selected.length === 0} onClick={async () => { setAdding(true); try { await onAdd(selected); } finally { setAdding(false); } }}>{adding ? <LoaderCircle className="spin" /> : <Plus />}{adding ? "Adding…" : selected.length === 0 ? "Add expansions" : `Add ${selected.length} expansion${selected.length === 1 ? "" : "s"}`}</Button>
+  </div>;
 }
 
 function WorkspaceAuthNotice({ message, children }: { message: string; children?: React.ReactNode }) {
