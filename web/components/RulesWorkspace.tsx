@@ -418,6 +418,10 @@ function WorkspaceContent() {
                   onClose={() => setShowRulebookInfo(false)}
                   onReplace={() => void replaceWrongRulebook()}
                   onAddExpansions={addExpansionGames}
+                  onReviewExpansion={(expansionLibraryGameId) => {
+                    setShowRulebookInfo(false);
+                    openChat(expansionLibraryGameId);
+                  }}
                   onRemoveExpansion={async (expansionLibraryGameId) => { await removeExpansion({ libraryGameId: selected._id, expansionLibraryGameId }); toast.success("Expansion removed from this chat"); }}
                 />
               )}
@@ -607,7 +611,7 @@ function RulebookRetry({ gameName, reason, replacing, onReplace, onImport }: { g
   );
 }
 
-function RulebookInfoSheet({ gameName, gameId, source, rulebook, expansions, reusedSharedRulebook, replacing, onClose, onReplace, onAddExpansions, onRemoveExpansion }: { gameName: string; gameId?: number; source: LibraryRow["rulebookSource"]; rulebook: LibraryRow["rulebook"]; expansions: NonNullable<LibraryRow["expansions"]>; reusedSharedRulebook?: boolean; replacing: boolean; onClose: () => void; onReplace: () => void; onAddExpansions: (expansions: GameSearchResult[]) => Promise<void>; onRemoveExpansion: (expansionLibraryGameId: Id<"libraryGames">) => Promise<void> }) {
+function RulebookInfoSheet({ gameName, gameId, source, rulebook, expansions, reusedSharedRulebook, replacing, onClose, onReplace, onAddExpansions, onReviewExpansion, onRemoveExpansion }: { gameName: string; gameId?: number; source: LibraryRow["rulebookSource"]; rulebook: LibraryRow["rulebook"]; expansions: NonNullable<LibraryRow["expansions"]>; reusedSharedRulebook?: boolean; replacing: boolean; onClose: () => void; onReplace: () => void; onAddExpansions: (expansions: GameSearchResult[]) => Promise<void>; onReviewExpansion: (expansionLibraryGameId: Id<"libraryGames">) => void; onRemoveExpansion: (expansionLibraryGameId: Id<"libraryGames">) => Promise<void> }) {
   const [showExpansions, setShowExpansions] = useState(false);
   return (
     <div className="source-backdrop" role="presentation" onMouseDown={onClose}>
@@ -629,7 +633,7 @@ function RulebookInfoSheet({ gameName, gameId, source, rulebook, expansions, reu
           {source?.url && <a className="rulebook-source-link" href={source.url} target="_blank" rel="noreferrer">Open complete rulebook <ExternalLink /></a>}
           <section className="rulebook-expansions" aria-labelledby="rulebook-expansions-title">
             <div><h3 id="rulebook-expansions-title">Play with expansions?</h3><p>Add one or more BGG expansions. Each gets its own rulebook and rules chat.</p></div>
-            {expansions.length > 0 && <div className="attached-expansions">{expansions.map((expansion) => <div key={expansion.libraryGameId}><span><strong>{expansion.game.name}</strong><small>{expansion.status === "ready" ? "Included in this chat" : expansion.statusLabel}</small></span><button type="button" aria-label={`Remove ${expansion.game.name}`} onClick={() => void onRemoveExpansion(expansion.libraryGameId)}><X /></button></div>)}</div>}
+            {expansions.length > 0 && <div className="attached-expansions">{expansions.map((expansion) => <div key={expansion.libraryGameId}><span><strong>{expansion.game.name}</strong><small>{expansion.status === "ready" ? "Included in this chat" : expansion.statusLabel}</small></span><div className="attached-expansion-actions">{expansion.status === "review_required" && <button type="button" className="review-expansion-button" onClick={() => onReviewExpansion(expansion.libraryGameId)}><BookOpenCheck />Review rulebook</button>}<button type="button" aria-label={`Remove ${expansion.game.name}`} onClick={() => void onRemoveExpansion(expansion.libraryGameId)}><X /></button></div></div>)}</div>}
             {!showExpansions ? <button type="button" className="add-expansions-button" onClick={() => setShowExpansions(true)}><Plus />Add expansions</button> : <ExpansionPicker excludeGameId={gameId} onAdd={async (expansions) => { await onAddExpansions(expansions); setShowExpansions(false); }} />}
           </section>
           <div className="wrong-rulebook-card">
