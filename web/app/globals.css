@@ -786,8 +786,11 @@
 .attached-expansions span { min-width: 0; display: grid; gap: 2px; }
 .attached-expansions strong { overflow: hidden; color: #173f36; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .attached-expansions small { color: #638278; font-size: 11px; }
+.attached-expansion-actions { display: flex; align-items: center; gap: 6px; }
 .attached-expansions button { width: 28px; height: 28px; display: grid; flex: 0 0 auto; place-items: center; padding: 0; border: 0; border-radius: 50%; color: #80564e; background: #fff0ed; }
 .attached-expansions button svg { width: 15px; height: 15px; }
+.attached-expansions .review-expansion-button { width: auto; height: 30px; display: inline-flex; gap: 5px; padding: 0 9px; border-radius: 999px; color: #12614f; background: #e4f4ee; font-size: 11px; font-weight: 700; }
+.attached-expansions .review-expansion-button svg { width: 14px; height: 14px; }
 .rulebook-expansion-picker .expansion-result { padding-inline: 2px; }
 .rulebook-expansion-picker .selected-expansions { margin-bottom: 1px; }
 .add-expansions-submit:disabled { cursor: not-allowed; opacity: .48; }
