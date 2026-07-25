@@ -78,12 +78,12 @@ function scoreGame(game: CatalogGame, query: string, terms: string[]) {
   return score + (game.expansion ? -25 : 20);
 }
 
-async function searchBundledCatalog(query: string) {
+async function searchBundledCatalog(query: string, expansionsOnly: boolean) {
   const normalizedQuery = normalize(query);
   const terms = normalizedQuery.split(" ").filter(Boolean);
   const games = await loadBundledCatalog();
   return games
-    .filter((game) => !game.expansion)
+    .filter((game) => expansionsOnly ? game.expansion : !game.expansion)
     .map((game) => ({ game, score: scoreGame(game, normalizedQuery, terms) }))
     .filter(({ score }) => score > 0)
     .sort((left, right) => right.score - left.score || (left.game.rank ?? Number.MAX_SAFE_INTEGER) - (right.game.rank ?? Number.MAX_SAFE_INTEGER))
@@ -101,18 +101,19 @@ async function searchBundledCatalog(query: string) {
 
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("q")?.trim() ?? "";
+  const expansionsOnly = request.nextUrl.searchParams.get("expansionsOnly") === "true";
   if (query.length < 2) return Response.json({ results: [] });
   const legacyUrl = process.env.LEGACY_API_URL ?? "http://localhost:4173";
   try {
     const response = await fetch(
-      `${legacyUrl}/api/search?q=${encodeURIComponent(query)}&baseOnly=true`,
+      `${legacyUrl}/api/search?q=${encodeURIComponent(query)}&baseOnly=${expansionsOnly ? "false" : "true"}`,
       { cache: "no-store", signal: AbortSignal.timeout(12_000) },
     );
     if (!response.ok) throw new Error(`Local catalogue returned ${response.status}`);
     return Response.json(await response.json());
   } catch {
     try {
-      return Response.json({ results: await searchBundledCatalog(query) });
+      return Response.json({ results: await searchBundledCatalog(query, expansionsOnly) });
     } catch (error) {
     return Response.json(
       {

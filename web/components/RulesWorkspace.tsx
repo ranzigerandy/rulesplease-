@@ -656,7 +656,7 @@ function ExpansionPicker({ excludeGameId, onAdd }: { excludeGameId?: number; onA
     const timeout = window.setTimeout(async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/catalog/search?q=${encodeURIComponent(query.trim())}`, { signal: controller.signal });
+        const response = await fetch(`/api/catalog/search?q=${encodeURIComponent(query.trim())}&expansionsOnly=true`, { signal: controller.signal });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error ?? "Catalogue search failed");
         setResults((data.results ?? []).filter((candidate: GameSearchResult) => candidate.expansion && candidate.id !== excludeGameId));
@@ -1147,7 +1147,7 @@ function RulebookImportSheet({ game, onClose, onImport }: { game: GameSearchResu
     const timeout = window.setTimeout(async () => {
       setExpansionLoading(true);
       try {
-        const response = await fetch(`/api/catalog/search?q=${encodeURIComponent(expansionQuery.trim())}`, { signal: controller.signal });
+        const response = await fetch(`/api/catalog/search?q=${encodeURIComponent(expansionQuery.trim())}&expansionsOnly=true`, { signal: controller.signal });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error ?? "Catalogue search failed");
         setExpansionResults((data.results ?? []).filter((candidate: GameSearchResult) => candidate.expansion && candidate.id !== game.id));
