@@ -791,6 +791,8 @@
 .attached-expansions button svg { width: 15px; height: 15px; }
 .attached-expansions .review-expansion-button { width: auto; height: 30px; display: inline-flex; gap: 5px; padding: 0 9px; border-radius: 999px; color: #12614f; background: #e4f4ee; font-size: 11px; font-weight: 700; }
 .attached-expansions .review-expansion-button svg { width: 14px; height: 14px; }
+.review-expansion-source { display: inline-flex; align-items: center; gap: 4px; color: #12614f; font-size: 11px; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.review-expansion-source svg { width: 13px; height: 13px; }
 .rulebook-expansion-picker .expansion-result { padding-inline: 2px; }
 .rulebook-expansion-picker .selected-expansions { margin-bottom: 1px; }
 .add-expansions-submit:disabled { cursor: not-allowed; opacity: .48; }
