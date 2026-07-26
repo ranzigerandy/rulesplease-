@@ -70,11 +70,24 @@ export const list = query({
           .take(20);
         const expansions = await Promise.all(expansionRows.map(async (expansion) => {
           const expansionGame = await ctx.db.get(expansion.gameId);
+          const expansionRulebook = expansion.rulebookId
+            ? await ctx.db.get(expansion.rulebookId)
+            : null;
+          const expansionRulebookSource = expansionRulebook
+            ? await ctx.db.get(expansionRulebook.sourceId)
+            : null;
+          const expansionPreviewPdfUrl = expansionRulebook?.storageId
+            ? await ctx.storage.getUrl(expansionRulebook.storageId)
+            : expansionRulebookSource?.storageId
+              ? await ctx.storage.getUrl(expansionRulebookSource.storageId)
+              : expansionRulebookSource?.url ?? null;
           return expansionGame ? {
             libraryGameId: expansion._id,
             game: expansionGame,
             status: expansion.status,
             statusLabel: expansion.statusLabel,
+            rulebookSource: expansionRulebookSource,
+            previewPdfUrl: expansionPreviewPdfUrl,
           } : null;
         }));
         return {

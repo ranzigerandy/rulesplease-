@@ -90,7 +90,7 @@ type LibraryRow = {
   previewPdfUrl?: string | null;
   sharedRulebook?: boolean;
   reusedSharedRulebook?: boolean;
-  expansions?: Array<{ libraryGameId: Id<"libraryGames">; game: { bggId: number; name: string; year?: number }; status: string; statusLabel: string }>;
+  expansions?: Array<{ libraryGameId: Id<"libraryGames">; game: { bggId: number; name: string; year?: number }; status: string; statusLabel: string; rulebookSource?: LibraryRow["rulebookSource"]; previewPdfUrl?: string | null }>;
 };
 
 type ChatMessage = {
@@ -151,6 +151,7 @@ function WorkspaceContent() {
   const [showRulebookImport, setShowRulebookImport] = useState(false);
   const [replacingRulebook, setReplacingRulebook] = useState(false);
   const [approvingRulebook, setApprovingRulebook] = useState(false);
+  const [approvingExpansionId, setApprovingExpansionId] = useState<Id<"libraryGames"> | null>(null);
 
   const selected = useMemo(
     () => library?.find((row) => row._id === selectedId) ?? null,
@@ -219,6 +220,20 @@ function WorkspaceContent() {
       toast.error(error instanceof Error ? error.message : "The rulebook could not be approved");
     } finally {
       setApprovingRulebook(false);
+    }
+  }
+
+  async function approveExpansionRulebook(expansionLibraryGameId: Id<"libraryGames">) {
+    setApprovingExpansionId(expansionLibraryGameId);
+    try {
+      await approveRulebook({ libraryGameId: expansionLibraryGameId });
+      toast.success("Expansion rulebook approved", {
+        description: "Indexing has started. It will be included in this chat when ready.",
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The expansion rulebook could not be approved");
+    } finally {
+      setApprovingExpansionId(null);
     }
   }
 
@@ -418,10 +433,8 @@ function WorkspaceContent() {
                   onClose={() => setShowRulebookInfo(false)}
                   onReplace={() => void replaceWrongRulebook()}
                   onAddExpansions={addExpansionGames}
-                  onReviewExpansion={(expansionLibraryGameId) => {
-                    setShowRulebookInfo(false);
-                    openChat(expansionLibraryGameId);
-                  }}
+                  approvingExpansionId={approvingExpansionId}
+                  onApproveExpansion={approveExpansionRulebook}
                   onRemoveExpansion={async (expansionLibraryGameId) => { await removeExpansion({ libraryGameId: selected._id, expansionLibraryGameId }); toast.success("Expansion removed from this chat"); }}
                 />
               )}
@@ -611,7 +624,7 @@ function RulebookRetry({ gameName, reason, replacing, onReplace, onImport }: { g
   );
 }
 
-function RulebookInfoSheet({ gameName, gameId, source, rulebook, expansions, reusedSharedRulebook, replacing, onClose, onReplace, onAddExpansions, onReviewExpansion, onRemoveExpansion }: { gameName: string; gameId?: number; source: LibraryRow["rulebookSource"]; rulebook: LibraryRow["rulebook"]; expansions: NonNullable<LibraryRow["expansions"]>; reusedSharedRulebook?: boolean; replacing: boolean; onClose: () => void; onReplace: () => void; onAddExpansions: (expansions: GameSearchResult[]) => Promise<void>; onReviewExpansion: (expansionLibraryGameId: Id<"libraryGames">) => void; onRemoveExpansion: (expansionLibraryGameId: Id<"libraryGames">) => Promise<void> }) {
+function RulebookInfoSheet({ gameName, gameId, source, rulebook, expansions, reusedSharedRulebook, replacing, onClose, onReplace, onAddExpansions, approvingExpansionId, onApproveExpansion, onRemoveExpansion }: { gameName: string; gameId?: number; source: LibraryRow["rulebookSource"]; rulebook: LibraryRow["rulebook"]; expansions: NonNullable<LibraryRow["expansions"]>; reusedSharedRulebook?: boolean; replacing: boolean; onClose: () => void; onReplace: () => void; onAddExpansions: (expansions: GameSearchResult[]) => Promise<void>; approvingExpansionId: Id<"libraryGames"> | null; onApproveExpansion: (expansionLibraryGameId: Id<"libraryGames">) => Promise<void>; onRemoveExpansion: (expansionLibraryGameId: Id<"libraryGames">) => Promise<void> }) {
   const [showExpansions, setShowExpansions] = useState(false);
   return (
     <div className="source-backdrop" role="presentation" onMouseDown={onClose}>
@@ -633,7 +646,7 @@ function RulebookInfoSheet({ gameName, gameId, source, rulebook, expansions, reu
           {source?.url && <a className="rulebook-source-link" href={source.url} target="_blank" rel="noreferrer">Open complete rulebook <ExternalLink /></a>}
           <section className="rulebook-expansions" aria-labelledby="rulebook-expansions-title">
             <div><h3 id="rulebook-expansions-title">Play with expansions?</h3><p>Add one or more BGG expansions. Each gets its own rulebook and rules chat.</p></div>
-            {expansions.length > 0 && <div className="attached-expansions">{expansions.map((expansion) => <div key={expansion.libraryGameId}><span><strong>{expansion.game.name}</strong><small>{expansion.status === "ready" ? "Included in this chat" : expansion.statusLabel}</small></span><div className="attached-expansion-actions">{expansion.status === "review_required" && <button type="button" className="review-expansion-button" onClick={() => onReviewExpansion(expansion.libraryGameId)}><BookOpenCheck />Review rulebook</button>}<button type="button" aria-label={`Remove ${expansion.game.name}`} onClick={() => void onRemoveExpansion(expansion.libraryGameId)}><X /></button></div></div>)}</div>}
+            {expansions.length > 0 && <div className="attached-expansions">{expansions.map((expansion) => <div key={expansion.libraryGameId}><span><strong>{expansion.game.name}</strong><small>{expansion.status === "ready" ? "Included in this chat" : expansion.statusLabel}</small></span><div className="attached-expansion-actions">{expansion.status === "review_required" && <>{expansion.rulebookSource?.url && <a className="review-expansion-source" href={expansion.rulebookSource.url} target="_blank" rel="noreferrer">Open source <ExternalLink /></a>}<button type="button" className="review-expansion-button" disabled={approvingExpansionId === expansion.libraryGameId} onClick={() => void onApproveExpansion(expansion.libraryGameId)}>{approvingExpansionId === expansion.libraryGameId ? <LoaderCircle className="spin" /> : <BookOpenCheck />}Approve & index</button></>}<button type="button" aria-label={`Remove ${expansion.game.name}`} onClick={() => void onRemoveExpansion(expansion.libraryGameId)}><X /></button></div></div>)}</div>}
             {!showExpansions ? <button type="button" className="add-expansions-button" onClick={() => setShowExpansions(true)}><Plus />Add expansions</button> : <ExpansionPicker excludeGameId={gameId} onAdd={async (expansions) => { await onAddExpansions(expansions); setShowExpansions(false); }} />}
           </section>
           <div className="wrong-rulebook-card">
