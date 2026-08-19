@@ -2,7 +2,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/ui/themes";
 import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "next-themes";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Poppins } from "next/font/google";
 import "./globals.css";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { applicationProductUrl } from "@/lib/application-url";
@@ -15,6 +15,13 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const poppins = Poppins({
+  variable: "--font-poppins",
+  subsets: ["latin"],
+  weight: ["400", "600", "700", "800"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -37,7 +44,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable}`}
+      className={`${poppins.variable} ${geistSans.variable} ${geistMono.variable}`}
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
@@ -59,8 +66,8 @@ export default function RootLayout({
               colorRing: "#0d0d0d",
               colorDanger: "#d92d20",
               borderRadius: "0.75rem",
-              fontFamily: "var(--font-geist-sans)",
-              fontFamilyButtons: "var(--font-geist-sans)",
+              fontFamily: "var(--font-poppins)",
+              fontFamilyButtons: "var(--font-poppins)",
             },
             elements: {
               rootBox: { width: "100%", maxWidth: "420px" },
@@ -71,7 +78,7 @@ export default function RootLayout({
               },
               headerTitle: {
                 color: "#0d0d0d",
-                fontFamily: "var(--font-geist-sans)",
+                fontFamily: "var(--font-poppins)",
                 fontSize: "1.5rem",
                 letterSpacing: "-0.02em",
               },

@@ -13,6 +13,7 @@ import { Authenticated, AuthLoading, Unauthenticated, useAction, useMutation, us
 import Image from "next/image";
 import {
   ArrowLeft,
+  ArrowRight,
   BookOpenCheck,
   BookOpenText,
   Check,
@@ -1079,8 +1080,22 @@ function HomeWorkspace({ library, onAdd, onRulebooks, onSettings, onSelect }: { 
           <div className="home-empty"><Search /><strong>No chats found</strong><span>Try another game title.</span></div>
         ) : filtered.map((row) => <RecentChatCard key={row._id} row={row} onSelect={onSelect} />)}
       </section>
-      <Button className="home-new-chat" onClick={onAdd}><Plus /> New chat</Button>
+      <Button className="home-new-chat" onClick={onAdd}>New chat <ArrowRight /></Button>
     </div>
+  );
+}
+
+export function AppHomePreview() {
+  const previewLibrary: LibraryRow[] = [
+    { _id: "preview-cascadia" as Id<"libraryGames">, status: "ready", statusLabel: "Ready", statusMessage: "1 question saved", progress: 100, game: { bggId: 295947, name: "Cascadia", year: 2021, thumbnailUrl: "/rulesplease-mascot.png" } },
+    { _id: "preview-wingspan" as Id<"libraryGames">, status: "ready", statusLabel: "Ready", statusMessage: "Ready for your next question", progress: 100, game: { bggId: 266192, name: "Wingspan", year: 2019, thumbnailUrl: "/rulesplease-mascot.png" } },
+  ];
+  return (
+    <main className="rules-app">
+      <section className="rules-main">
+        <HomeWorkspace library={previewLibrary} onAdd={() => undefined} onRulebooks={() => undefined} onSettings={() => undefined} onSelect={() => undefined} />
+      </section>
+    </main>
   );
 }
 
