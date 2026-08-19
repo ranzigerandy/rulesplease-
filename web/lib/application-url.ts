@@ -6,5 +6,5 @@ export const applicationOrigin =
     ? "https://app.rulesplease.com"
     : "http://localhost:3000");
 
-export const applicationProductUrl = `${applicationOrigin}/product`;
+export const applicationHomeUrl = applicationOrigin;
 export const applicationSignUpUrl = `${applicationOrigin}/sign-up`;
