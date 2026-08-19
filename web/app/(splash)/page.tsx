@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   BookOpenCheck,
+  CircleHelp,
   MessageCircleQuestion,
   Sparkles,
   TimerReset,
@@ -24,7 +25,7 @@ export default function HomePage() {
           <div className="landing-question"><MessageCircleQuestion /><span>Can I play this<br />after I draw?</span></div>
           <div className="landing-answer"><span>RULE FOUND</span><strong>Yes — after drawing,<br />play one action card.</strong><small>Rulebook · p. 12</small></div>
           <Image src="/rulesplease-mascot.png" alt="Rules Please mascot holding a rulebook" width={627} height={649} priority />
-          <b className="landing-token question-token">?</b><b className="landing-token sparkle-token">✦</b>
+          <b className="landing-token question-token"><CircleHelp /></b><b className="landing-token sparkle-token"><Sparkles /></b>
         </div>
       </section>
 
@@ -39,7 +40,7 @@ export default function HomePage() {
       </section>
 
       <section className="landing-source" aria-labelledby="source-title">
-        <div className="landing-rulebook" aria-hidden="true"><span>RULEBOOK</span><b>?</b><i /><i /><i /></div>
+        <div className="landing-rulebook" aria-hidden="true"><span>RULEBOOK</span><b><CircleHelp /></b><i /><i /><i /></div>
         <div>
           <p className="landing-eyebrow blush"><BookOpenCheck /> No vague guesses</p>
           <h2 id="source-title">Every answer has a <em>source.</em></h2>

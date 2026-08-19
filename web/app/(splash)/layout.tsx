@@ -8,7 +8,7 @@ export default function SplashLayout({ children }: { children: ReactNode }) {
       <header className="marketing-nav">
         <Link href="/" className="brand-lockup"><span><Dices /></span> Rules Please!</Link>
         <nav>
-          <Link href="/sign-up" className="landing-nav-cta">Get early access <ArrowRight /></Link>
+          <Link href="/sign-up" className="landing-cta landing-nav-cta">Get early access <ArrowRight /></Link>
         </nav>
       </header>
       {children}
