@@ -682,13 +682,13 @@ function RulebookInfoSheet({ gameName, gameId, source, rulebook, expansions, reu
           </dl>
           {source?.url && <a className="rulebook-source-link" href={source.url} target="_blank" rel="noreferrer">Open complete rulebook <ExternalLink /></a>}
           <section className="rulebook-expansions" aria-labelledby="rulebook-expansions-title">
-            <div><h3 id="rulebook-expansions-title">Play with expansions?</h3><p>Add one or more BGG expansions. Each gets its own rulebook and rules chat.</p></div>
+            <div><h3 id="rulebook-expansions-title">Play with expansions?</h3></div>
             {expansions.length > 0 && <div className="attached-expansions">{expansions.map((expansion) => <div key={expansion.libraryGameId}><span><strong>{expansion.game.name}</strong><small>{expansion.status === "ready" ? "Included in this chat" : expansion.statusLabel}</small></span><div className="attached-expansion-actions">{expansion.status === "review_required" && <>{expansion.rulebookSource?.url && <a className="review-expansion-source" href={expansion.rulebookSource.url} target="_blank" rel="noreferrer">Open source <ExternalLink /></a>}<button type="button" className="review-expansion-button" disabled={approvingExpansionId === expansion.libraryGameId} onClick={() => void onApproveExpansion(expansion.libraryGameId)}>{approvingExpansionId === expansion.libraryGameId ? <LoaderCircle className="spin" /> : <BookOpenCheck />}Approve & index</button></>}<button type="button" aria-label={`Remove ${expansion.game.name}`} onClick={() => void onRemoveExpansion(expansion.libraryGameId)}><X /></button></div></div>)}</div>}
             {!showExpansions ? <button type="button" className="add-expansions-button" onClick={() => setShowExpansions(true)}><Plus />Add expansions</button> : <ExpansionPicker excludeGameId={gameId} onAdd={async (expansions) => { await onAddExpansions(expansions); setShowExpansions(false); }} />}
           </section>
           <div className="wrong-rulebook-card">
             <TriangleAlert />
-            <div><strong>Wrong game or edition?</strong><p>Reject this source and rebuild the chat from a newly verified base-game rulebook.</p></div>
+            <div><strong>Wrong game or edition?</strong></div>
             <button type="button" disabled={replacing} onClick={onReplace}>{replacing ? <LoaderCircle className="spin" /> : <RefreshCw />}{replacing ? "Replacing…" : "Reject & replace"}</button>
           </div>
         </div>
