@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "next-themes";
 import { Geist, Geist_Mono, Poppins } from "next/font/google";
 import "./globals.css";
+import "./chat-viewport.css";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { applicationHomeUrl } from "@/lib/application-url";
 

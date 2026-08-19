@@ -1,0 +1,21 @@
+/* The chat owns the mobile viewport. Only the message list is allowed to scroll. */
+@media (max-width: 900px) {
+  .rules-app.is-chat {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .rules-app.is-chat .rules-main {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .rules-app.is-chat .chat-header {
+    position: relative;
+    z-index: 30;
+    flex: 0 0 auto;
+  }
+}
