@@ -23,6 +23,7 @@ import {
   ExternalLink,
   FileText,
   FileUp,
+  Flag,
   LibraryBig,
   Link2,
   LoaderCircle,
@@ -35,6 +36,7 @@ import {
   Info,
   RefreshCw,
   TriangleAlert,
+  UserRound,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -140,6 +142,7 @@ function WorkspaceContent() {
   const approveRulebook = useMutation(api.library.approveRulebook);
   const getOrCreateThread = useMutation(api.chat.getOrCreateThread);
   const ask = useAction(api.chat.ask);
+  const submitFeedback = useMutation(api.chat.submitFeedback);
   const [view, setView] = useState<AppView>("home");
   const [selectedId, setSelectedId] = useState<Id<"libraryGames"> | null>(null);
   const [chatThreadId, setChatThreadId] = useState<Id<"chatThreads"> | null>(null);
@@ -153,6 +156,23 @@ function WorkspaceContent() {
   const [replacingRulebook, setReplacingRulebook] = useState(false);
   const [approvingRulebook, setApprovingRulebook] = useState(false);
   const [approvingExpansionId, setApprovingExpansionId] = useState<Id<"libraryGames"> | null>(null);
+  const [answerLanguage, setAnswerLanguage] = useState("Auto");
+  const [showCitations, setShowCitations] = useState(true);
+
+  useEffect(() => {
+    const storedLanguage = window.localStorage.getItem("rulesplease-answer-language");
+    const storedCitations = window.localStorage.getItem("rulesplease-show-citations");
+    if (storedLanguage) setAnswerLanguage(storedLanguage);
+    if (storedCitations !== null) setShowCitations(storedCitations === "true");
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("rulesplease-answer-language", answerLanguage);
+  }, [answerLanguage]);
+
+  useEffect(() => {
+    window.localStorage.setItem("rulesplease-show-citations", String(showCitations));
+  }, [showCitations]);
 
   const selected = useMemo(
     () => library?.find((row) => row._id === selectedId) ?? null,
@@ -333,6 +353,7 @@ function WorkspaceContent() {
         chatThreadId: threadId,
         libraryGameId: selected._id,
         question: question.trim(),
+        ...(answerLanguage !== "Auto" ? { answerLanguage } : {}),
       });
       setQuestion("");
     } catch (error) {
@@ -418,8 +439,14 @@ function WorkspaceContent() {
                   citations={citations ?? []}
                   question={question}
                   setQuestion={setQuestion}
-                  asking={asking}
-                  submit={submitQuestion}
+                asking={asking}
+                submit={submitQuestion}
+                showCitations={showCitations}
+                onReportCitation={async (agentMessageId) => {
+                  if (!activeChatThreadId) return;
+                  await submitFeedback({ chatThreadId: activeChatThreadId, agentMessageId, rating: "incorrect" });
+                  toast.success("Citation reported", { description: "Thanks — this helps us improve the rulebook sources." });
+                }}
                 />
               )}
               {showRulebookInfo && (
@@ -469,6 +496,15 @@ function WorkspaceContent() {
               count={rows.length}
               onBack={() => openView("home")}
               userName={user?.fullName ?? user?.firstName ?? "Player"}
+              profileImageUrl={user?.imageUrl}
+              answerLanguage={answerLanguage}
+              onAnswerLanguageChange={setAnswerLanguage}
+              showCitations={showCitations}
+              onShowCitationsChange={setShowCitations}
+              onReportWrongCitation={() => {
+                openView("home");
+                toast.message("Open the chat with the citation", { description: "Use Report citation beneath the answer to send your report." });
+              }}
             />
           ) : view === "rulebooks" ? (
             <RulebooksWorkspace library={rows} onBack={() => openView("home")} onSelect={openChat} />
@@ -844,7 +880,7 @@ function CitationPassage({ quote, answer }: { quote: string; answer: string }) {
   return <blockquote>{before}{highlight && <strong>{highlight}</strong>}{after}</blockquote>;
 }
 
-function ChatPanel({ gameName, messages, citations, question, setQuestion, asking, submit }: { gameName: string; messages: ChatMessage[]; citations: CitationRecord[]; question: string; setQuestion: (value: string) => void; asking: boolean; submit: () => Promise<void> }) {
+function ChatPanel({ gameName, messages, citations, question, setQuestion, asking, submit, showCitations, onReportCitation }: { gameName: string; messages: ChatMessage[]; citations: CitationRecord[]; question: string; setQuestion: (value: string) => void; asking: boolean; submit: () => Promise<void>; showCitations: boolean; onReportCitation: (agentMessageId: string) => Promise<void> }) {
   const [expandedCitationMessageId, setExpandedCitationMessageId] = useState<string | null>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
   const messageStreamRef = useRef<HTMLDivElement>(null);
@@ -935,7 +971,7 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
           return (
             <article key={message.id} className={`message-bubble ${role}`}>
               {role === "assistant" ? <MessageResponse>{text}</MessageResponse> : <p>{text}</p>}
-              {messageCitations.length > 0 && (
+              {showCitations && messageCitations.length > 0 && (
                 <div className={`citation-row ${citationsExpanded ? "is-expanded" : ""}`}>
                   <div className="citation-disclosure">
                   <button
@@ -971,6 +1007,9 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
                   )}
                   </div>
                 </div>
+              )}
+              {showCitations && role === "assistant" && messageCitations.length > 0 && (
+                <button type="button" className="citation-report" onClick={() => void onReportCitation(message.id)}><Flag />Report citation</button>
               )}
             </article>
           );
@@ -1094,6 +1133,18 @@ export function AppHomePreview() {
     <main className="rules-app">
       <section className="rules-main">
         <HomeWorkspace library={previewLibrary} onAdd={() => undefined} onRulebooks={() => undefined} onSettings={() => undefined} onSelect={() => undefined} />
+      </section>
+    </main>
+  );
+}
+
+export function AppSettingsPreview() {
+  const [answerLanguage, setAnswerLanguage] = useState("Auto");
+  const [showCitations, setShowCitations] = useState(true);
+  return (
+    <main className="rules-app">
+      <section className="rules-main">
+        <SettingsWorkspace email="you@example.com" count={2} onBack={() => undefined} userName="Preview player" showUserMenu={false} answerLanguage={answerLanguage} onAnswerLanguageChange={setAnswerLanguage} showCitations={showCitations} onShowCitationsChange={setShowCitations} onReportWrongCitation={() => undefined} />
       </section>
     </main>
   );
@@ -1258,21 +1309,44 @@ function RulebookImportSheet({ game, onClose, onImport }: { game: GameSearchResu
   );
 }
 
-function SettingsWorkspace({ email, count, onBack, userName }: { email: string; count: number; onBack: () => void; userName: string }) {
+function SettingsWorkspace({ email, count, onBack, userName, profileImageUrl, showUserMenu = true, answerLanguage, onAnswerLanguageChange, showCitations, onShowCitationsChange, onReportWrongCitation }: { email: string; count: number; onBack: () => void; userName: string; profileImageUrl?: string; showUserMenu?: boolean; answerLanguage: string; onAnswerLanguageChange: (language: string) => void; showCitations: boolean; onShowCitationsChange: (value: boolean) => void; onReportWrongCitation: () => void }) {
+  const [showAbout, setShowAbout] = useState(false);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const languages = ["Auto", "English", "Nederlands", "Français", "Deutsch", "Español"];
   return (
     <div className="subscreen">
       <ScreenHeader title="Settings" onBack={onBack} />
       <div className="settings-content">
         <div className="settings-account">
-          <Image src="/rulesplease-mascot.png" alt="" width={52} height={52} />
-          <span><strong>Rules Please!</strong><small>{userName}</small></span>
-          <UserMenu>{userName}</UserMenu>
+          {profileImageUrl ? (
+            <img className="settings-profile-image" src={profileImageUrl} alt={`${userName}'s profile photo`} />
+          ) : (
+            <div className="settings-profile-placeholder" aria-label="Profile photo placeholder">
+              <UserRound aria-hidden="true" />
+            </div>
+          )}
+          <span><small>{userName}</small></span>
+          {showUserMenu && <UserMenu>{userName}</UserMenu>}
         </div>
         <SettingsSection title="Account" rows={[{ label: "Subscription", value: "Local MVP", arrow: true }, { label: "Email", value: email }]} />
-        <SettingsSection title="App" rows={[{ label: "Language", value: "Auto", arrow: true }, { label: "Answer with citations", toggle: true }, { label: "Search mode", value: "AI", arrow: true }]} />
+        <section className="settings-section">
+          <h2>App</h2>
+          <div>
+            <button type="button" className="settings-select" onClick={() => setShowLanguagePicker(true)} aria-haspopup="dialog"><span>Answer language</span><em>{answerLanguage}<ChevronRight aria-hidden="true" /></em></button>
+            <button type="button" className="settings-switch" role="switch" aria-checked={showCitations} onClick={() => onShowCitationsChange(!showCitations)}><span>Answer with citations</span><i className={`settings-toggle ${showCitations ? "is-on" : ""}`} /></button>
+          </div>
+        </section>
         <SettingsSection title="Data" rows={[{ label: "Chats", value: String(count) }, { label: "Rulebooks", value: String(count) }, { label: "Data controls", arrow: true }]} />
-        <SettingsSection title="Support" rows={[{ label: "Report wrong citation", arrow: true }, { label: "About Rules Please!", arrow: true }]} />
+        <section className="settings-section">
+          <h2>Support</h2>
+          <div>
+            <button type="button" onClick={onReportWrongCitation}><span>Report wrong citation</span><em><ChevronRight /></em></button>
+            <button type="button" onClick={() => setShowAbout(true)}><span>About Rules Please!</span><em><ChevronRight /></em></button>
+          </div>
+        </section>
       </div>
+      {showAbout && <div className="settings-dialog-backdrop" role="presentation" onMouseDown={() => setShowAbout(false)}><section className="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="about-rulesplease-title" onMouseDown={(event) => event.stopPropagation()}><h2 id="about-rulesplease-title">Rules Please!</h2><p>Clear answers to board-game rules, backed by the rulebook you added.</p><button type="button" onClick={() => setShowAbout(false)}>Done</button></section></div>}
+      {showLanguagePicker && <div className="settings-dialog-backdrop settings-sheet-backdrop" role="presentation" onMouseDown={() => setShowLanguagePicker(false)}><section className="settings-language-sheet" role="dialog" aria-modal="true" aria-labelledby="answer-language-title" onMouseDown={(event) => event.stopPropagation()}><header><h2 id="answer-language-title">Answer language</h2><button type="button" aria-label="Close language picker" onClick={() => setShowLanguagePicker(false)}><X /></button></header><p>Choose the language for new answers.</p><div>{languages.map((language) => <button type="button" key={language} className={answerLanguage === language ? "selected" : ""} onClick={() => { onAnswerLanguageChange(language); setShowLanguagePicker(false); }}><span>{language}</span>{answerLanguage === language && <Check aria-label="Selected" />}</button>)}</div></section></div>}
     </div>
   );
 }

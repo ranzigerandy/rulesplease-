@@ -237,6 +237,7 @@ export const ask = action({
     chatThreadId: v.id("chatThreads"),
     libraryGameId: v.id("libraryGames"),
     question: v.string(),
+    answerLanguage: v.optional(v.string()),
   },
   returns: v.object({
     answer: v.string(),
@@ -247,6 +248,7 @@ export const ask = action({
     const userId = await requireUserId(ctx);
     const question = args.question.trim();
     if (!question || question.length > 2000) throw new Error("Invalid question");
+    if (args.answerLanguage && args.answerLanguage.length > 40) throw new Error("Invalid answer language");
     const context = (await ctx.runQuery(
       internal.chatInternal.authorizedContext,
       {
@@ -309,6 +311,7 @@ export const ask = action({
           `You answer questions about ${context.game.name} using only the supplied rulebook excerpts.`,
           "When an expansion rule conflicts with the base-game rulebook, always follow the expansion rule and say that it overrides the base game when relevant.",
           "Answer the user's latest question directly in at most two short sentences and 60 words.",
+          args.answerLanguage ? `Write the answer in ${args.answerLanguage}.` : "Reply in the same language as the user's question.",
           "Do not repeat the question, add headings, show your reasoning, reproduce the excerpts, or mention excerpt numbers.",
           `If the excerpts do not support the answer, respond with exactly ${NO_ANSWER}. Do not add rules from memory.`,
           `Rulebook excerpts:\n${excerpts}`,
