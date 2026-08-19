@@ -1,4 +1,5 @@
 import { SignUp } from "@clerk/nextjs";
+import { applicationProductUrl } from "@/lib/application-url";
 import { ArrowLeft, BookOpenCheck, Dices } from "lucide-react";
 import Link from "next/link";
 
@@ -18,7 +19,7 @@ export default function SignUpPage() {
           path="/sign-up"
           routing="path"
           signInUrl="/sign-in"
-          fallbackRedirectUrl="/product"
+          fallbackRedirectUrl={applicationProductUrl}
         />
       </section>
     </main>

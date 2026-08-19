@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
+import { applicationProductUrl } from "@/lib/application-url";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -103,8 +104,8 @@ export default function RootLayout({
               footerActionLink: { color: "#0d0d0d", fontWeight: 700 },
             },
           }}
-          signInFallbackRedirectUrl="/product"
-          signUpFallbackRedirectUrl="/product"
+          signInFallbackRedirectUrl={applicationProductUrl}
+          signUpFallbackRedirectUrl={applicationProductUrl}
         >
           <ThemeProvider attribute="class" defaultTheme="light">
             <ConvexClientProvider>{children}</ConvexClientProvider>

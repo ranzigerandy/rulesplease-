@@ -8,6 +8,7 @@ import {
   Sparkles,
   TimerReset,
 } from "lucide-react";
+import { applicationSignUpUrl } from "@/lib/application-url";
 
 export default function HomePage() {
   return (
@@ -17,7 +18,7 @@ export default function HomePage() {
           <p className="landing-eyebrow"><Sparkles /> Your game-night rules expert</p>
           <h1 id="hero-title">Less rulebook.<br /><em>More game night.</em></h1>
           <p>Ask the question that stops the table. Rules, Please! finds a clear answer, so the game — and the fun — keeps moving.</p>
-          <Link className="landing-cta" href="/sign-up">Get early access <ArrowRight /></Link>
+          <Link className="landing-cta" href={applicationSignUpUrl}>Get early access <ArrowRight /></Link>
           <small>Free to get started.</small>
         </div>
 
@@ -45,7 +46,7 @@ export default function HomePage() {
           <p className="landing-eyebrow blush"><BookOpenCheck /> No vague guesses</p>
           <h2 id="source-title">Every answer has a <em>source.</em></h2>
           <p>Rules, Please! is made for the strange interaction, forgotten exception or friendly debate that stalls a game. Get the context you need, then get back to your turn.</p>
-          <Link className="landing-inline-link" href="/sign-up">Get early access <ArrowRight /></Link>
+          <Link className="landing-inline-link" href={applicationSignUpUrl}>Get early access <ArrowRight /></Link>
         </div>
       </section>
 
@@ -53,7 +54,7 @@ export default function HomePage() {
         <p className="landing-eyebrow">Your seat is saved</p>
         <h2 id="final-title">Ready for more<br /><em>game night?</em></h2>
         <p>Start a library, ask a rule question, and get back to the fun.</p>
-        <Link className="landing-cta" href="/sign-up">Create your account <ArrowRight /></Link>
+        <Link className="landing-cta" href={applicationSignUpUrl}>Create your account <ArrowRight /></Link>
         <small>Clear answers, backed by sources.</small>
       </section>
     </main>

@@ -1,6 +1,7 @@
 import { ArrowRight, Dices } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { applicationSignUpUrl } from "@/lib/application-url";
 
 export default function SplashLayout({ children }: { children: ReactNode }) {
   return (
@@ -8,7 +9,7 @@ export default function SplashLayout({ children }: { children: ReactNode }) {
       <header className="marketing-nav">
         <Link href="/" className="brand-lockup"><span><Dices /></span> Rules Please!</Link>
         <nav>
-          <Link href="/sign-up" className="landing-cta landing-nav-cta">Get early access <ArrowRight /></Link>
+          <Link href={applicationSignUpUrl} className="landing-cta landing-nav-cta">Get early access <ArrowRight /></Link>
         </nav>
       </header>
       {children}
