@@ -13,7 +13,7 @@ export default function SplashLayout({ children }: { children: ReactNode }) {
           <a href="#how-it-works">How it works</a>
           <Show when="signed-out">
             <SignInButton mode="redirect"><Button variant="ghost">Sign in</Button></SignInButton>
-            <SignUpButton mode="redirect"><Button>Create account</Button></SignUpButton>
+            <SignUpButton mode="redirect"><Button className="landing-nav-cta">Create account</Button></SignUpButton>
           </Show>
           <Show when="signed-in">
             <Link href="/product"><Button>Open your library</Button></Link>
