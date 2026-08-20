@@ -662,30 +662,14 @@ function RulebookRetry({ gameName, reason, replacing, onReplace, onImport }: { g
 }
 
 function RulebookInfoSheet({ gameName, gameId, source, rulebook, expansions, reusedSharedRulebook, replacing, onClose, onReplace, onAddExpansions, approvingExpansionId, onApproveExpansion, onRemoveExpansion }: { gameName: string; gameId?: number; source: LibraryRow["rulebookSource"]; rulebook: LibraryRow["rulebook"]; expansions: NonNullable<LibraryRow["expansions"]>; reusedSharedRulebook?: boolean; replacing: boolean; onClose: () => void; onReplace: () => void; onAddExpansions: (expansions: GameSearchResult[]) => Promise<void>; approvingExpansionId: Id<"libraryGames"> | null; onApproveExpansion: (expansionLibraryGameId: Id<"libraryGames">) => Promise<void>; onRemoveExpansion: (expansionLibraryGameId: Id<"libraryGames">) => Promise<void> }) {
-  const [showExpansions, setShowExpansions] = useState(false);
   return (
     <div className="source-backdrop" role="presentation" onMouseDown={onClose}>
       <section className="source-sheet rulebook-info-sheet" role="dialog" aria-modal="true" aria-label={`${gameName} rulebook information`} onMouseDown={(event) => event.stopPropagation()}>
         <header>
-          <div><span>VERIFIED RULEBOOK</span><h2>{gameName}</h2></div>
+          <div><h2>{gameName}</h2></div>
           <button type="button" onClick={onClose} aria-label="Close rulebook information"><X /></button>
         </header>
         <div className="rulebook-info-content">
-          <div className="identity-verdict"><ShieldCheck /><div><strong>{source?.edition ?? "Base game"}</strong><span>{reusedSharedRulebook ? "Reused instantly from the shared database" : source?.reviewStatus === "approved" ? "Identity check passed" : "Source status unavailable"}</span></div></div>
-          <dl>
-            <div><dt>Source</dt><dd>{source?.label ?? "Indexed rulebook"}</dd></div>
-            <div><dt>Language</dt><dd>{source?.language?.toUpperCase() ?? "EN"}</dd></div>
-            <div><dt>Confidence</dt><dd>{source?.confidence ?? "Unknown"}</dd></div>
-            <div><dt>Community checks</dt><dd>{rulebook?.verificationCount ?? 0}</dd></div>
-            <div><dt>Pages</dt><dd>{source?.pageCount ?? rulebook?.pageCount ?? "Unknown"}</dd></div>
-            <div><dt>Revision</dt><dd>{source?.revision ?? "Not specified"}</dd></div>
-          </dl>
-          {source?.url && <a className="rulebook-source-link" href={source.url} target="_blank" rel="noreferrer">Open complete rulebook <ExternalLink /></a>}
-          <section className="rulebook-expansions" aria-labelledby="rulebook-expansions-title">
-            <div><h3 id="rulebook-expansions-title">Play with expansions?</h3></div>
-            {expansions.length > 0 && <div className="attached-expansions">{expansions.map((expansion) => <div key={expansion.libraryGameId}><span><strong>{expansion.game.name}</strong><small>{expansion.status === "ready" ? "Included in this chat" : expansion.statusLabel}</small></span><div className="attached-expansion-actions">{expansion.status === "review_required" && <>{expansion.rulebookSource?.url && <a className="review-expansion-source" href={expansion.rulebookSource.url} target="_blank" rel="noreferrer">Open source <ExternalLink /></a>}<button type="button" className="review-expansion-button" disabled={approvingExpansionId === expansion.libraryGameId} onClick={() => void onApproveExpansion(expansion.libraryGameId)}>{approvingExpansionId === expansion.libraryGameId ? <LoaderCircle className="spin" /> : <BookOpenCheck />}Approve & index</button></>}<button type="button" aria-label={`Remove ${expansion.game.name}`} onClick={() => void onRemoveExpansion(expansion.libraryGameId)}><X /></button></div></div>)}</div>}
-            {!showExpansions ? <button type="button" className="add-expansions-button" onClick={() => setShowExpansions(true)}><Plus />Add expansions</button> : <ExpansionPicker excludeGameId={gameId} onAdd={async (expansions) => { await onAddExpansions(expansions); setShowExpansions(false); }} />}
-          </section>
           <div className="wrong-rulebook-card">
             <TriangleAlert />
             <div><strong>Wrong game or edition?</strong></div>
