@@ -696,6 +696,18 @@ function RulebookInfoSheet({ gameName, gameId, source, rulebook, expansions, reu
             <button type="button" className="add-expansions-button" onClick={() => setShowExpansionPicker((current) => !current)}><Plus />Add expansion</button>
           </div>
           {showExpansionPicker && <ExpansionPicker excludeGameId={gameId} onAdd={async (newExpansions) => { await onAddExpansions(newExpansions); setShowExpansionPicker(false); }} />}
+          {expansions.length > 0 && (
+            <section className="rulebook-expansions" aria-labelledby="attached-expansions-title">
+              <div><h3 id="attached-expansions-title">Expansions</h3><p>{expansions.length} added to this chat</p></div>
+              <div className="attached-expansions">
+                {expansions.map((expansion) => (
+                  <div key={expansion.libraryGameId}>
+                    <span><strong>{expansion.game.name}</strong><small>{expansion.status === "ready" ? "Ready to use" : expansion.statusLabel}</small></span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
           <div className="wrong-rulebook-card">
             <TriangleAlert />
             <div><strong>Wrong game or edition?</strong></div>
