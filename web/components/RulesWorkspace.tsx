@@ -832,7 +832,7 @@ function relevantCitationExcerpt(quote: string, answer: string) {
     .sort((left, right) => right.hits - left.hits || left.index - right.index)[0];
 
   if (!best || best.hits === 0) {
-    return quote.length <= 520 ? quote : `${quote.slice(0, 480).trimEnd()}â€¦`;
+    return quote.length <= 520 ? quote : `${quote.slice(0, 480).trimEnd()}…`;
   }
 
   const selected = [best];
@@ -844,7 +844,7 @@ function relevantCitationExcerpt(quote: string, answer: string) {
   }
 
   const excerpt = selected.map(({ text }) => text).join(" ");
-  return `${selected[0].index > 0 ? "â€¦ " : ""}${excerpt}${selected.at(-1)!.index < sentences.length - 1 ? " â€¦" : ""}`;
+  return `${selected[0].index > 0 ? "… " : ""}${excerpt}${selected.at(-1)!.index < sentences.length - 1 ? " …" : ""}`;
 }
 
 function highlightCitationPassage(quote: string, answer: string) {
