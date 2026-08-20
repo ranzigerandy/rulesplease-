@@ -1267,13 +1267,11 @@
 }
 .rules-app:not(.is-chat) .home-new-chat:hover { background: hsl(183 47% 53%); }
 
-@media (max-width: 900px) {
-  html, body, .rules-app, .rules-main, .home-screen, .subscreen, .message-stream, .rulebook-info-content, .rules-app.is-chat .rulebook-approval {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  html::-webkit-scrollbar, body::-webkit-scrollbar, .rules-app::-webkit-scrollbar, .rules-main::-webkit-scrollbar, .home-screen::-webkit-scrollbar, .subscreen::-webkit-scrollbar, .message-stream::-webkit-scrollbar, .rulebook-info-content::-webkit-scrollbar, .rules-app.is-chat .rulebook-approval::-webkit-scrollbar { display: none; }
+html, body, .rules-app, .rules-main, .home-screen, .subscreen, .message-stream, .rulebook-info-content, .rules-app.is-chat .rulebook-approval {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+html::-webkit-scrollbar, body::-webkit-scrollbar, .rules-app::-webkit-scrollbar, .rules-main::-webkit-scrollbar, .home-screen::-webkit-scrollbar, .subscreen::-webkit-scrollbar, .message-stream::-webkit-scrollbar, .rulebook-info-content::-webkit-scrollbar, .rules-app.is-chat .rulebook-approval::-webkit-scrollbar { display: none; }
 .rules-app:not(.is-chat) .home-new-chat svg { width: 19px; height: 19px; }
 
 @media (min-width: 901px) {
