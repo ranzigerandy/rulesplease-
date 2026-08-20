@@ -698,7 +698,7 @@ function RulebookInfoSheet({ gameName, gameId, source, rulebook, expansions, reu
           {showExpansionPicker && <ExpansionPicker excludeGameId={gameId} onAdd={async (newExpansions) => { await onAddExpansions(newExpansions); setShowExpansionPicker(false); }} />}
           {expansions.length > 0 && (
             <section className="rulebook-expansions" aria-labelledby="attached-expansions-title">
-              <div><h3 id="attached-expansions-title">Expansions</h3><p>{expansions.length} added to this chat</p></div>
+              <div><h3 id="attached-expansions-title">Included expansions</h3><p>{expansions.length} in this chat</p></div>
               <div className="attached-expansions">
                 {expansions.map((expansion) => (
                   <div key={expansion.libraryGameId}>

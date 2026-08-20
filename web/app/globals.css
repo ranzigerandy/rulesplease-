@@ -838,6 +838,30 @@
 .wrong-rulebook-card button:hover { background: #822b1d; }
 .wrong-rulebook-card button:disabled { opacity: .65; }
 .wrong-rulebook-card button svg { width: 14px; height: 14px; }
+
+/* Rulebook details: calm, content-first action sheet. */
+.rulebook-info-content { gap: 16px; }
+.rulebook-info-actions .add-expansions-button { min-height: 52px; border-radius: 16px; font-size: 15px; }
+.rulebook-expansions { gap: 9px; padding: 2px 0 0; border: 0; border-radius: 0; background: transparent; }
+.rulebook-expansions > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.rulebook-expansions h3 { color: #173f36; font-size: 13px; font-weight: 700; letter-spacing: .01em; }
+.rulebook-expansions p { color: #6d827c; font-size: 12px; }
+.attached-expansions { gap: 6px; }
+.attached-expansions > div { min-height: 66px; padding: 12px 14px; border-radius: 14px; background: #f1f8f6; }
+.attached-expansions strong { color: #173f36; font-size: 14px; }
+.review-expansion-source { color: #176a59; font-size: 12px; text-decoration: none; }
+.review-expansion-source:hover { color: #0d3f35; text-decoration: underline; text-underline-offset: 3px; }
+.wrong-rulebook-card, .archive-chat-card { padding: 14px 0 0; border: 0; border-top: 1px solid rgba(13,13,13,.09); border-radius: 0; background: transparent; }
+.wrong-rulebook-card { grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.wrong-rulebook-card > svg { width: 19px; height: 19px; color: #ad4330; }
+.wrong-rulebook-card strong, .archive-chat-card strong { font-size: 14px; font-weight: 650; }
+.wrong-rulebook-card button { min-height: 36px; color: #a83d2b; background: #fae9e4; }
+.wrong-rulebook-card button:hover { background: #f5dbd3; }
+.archive-chat-card { padding-top: 14px; }
+.archive-chat-card > div:first-child > svg { width: 19px; height: 19px; color: #a83d2b; }
+.archive-chat-card small { color: #846d67; }
+.archive-chat-card > button, .archive-chat-confirm button { min-height: 36px; color: #a83d2b; background: #fae9e4; }
+.archive-chat-card > button:hover, .archive-chat-confirm button:hover { background: #f5dbd3; }
 .chat-empty { min-height: 100%; display: grid; place-items: center; align-content: center; gap: 10px; padding: 36px 0; color: #6f6f6f; text-align: center; }
 .chat-empty svg { width: 30px; height: 30px; color: #0d0d0d; }
 .chat-empty h2 { color: #0d0d0d; font-size: 26px; line-height: 1.1; font-weight: 650; }
