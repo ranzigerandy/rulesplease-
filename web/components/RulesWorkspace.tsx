@@ -510,7 +510,6 @@ function WorkspaceContent() {
               onBack={() => openView("home")}
               onSelect={openChat}
               onAdd={addSearchResult}
-              onImport={importRulebook}
             />
           ) : view === "settings" ? (
             <SettingsWorkspace
@@ -931,6 +930,7 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
   const layoutRef = useRef<HTMLDivElement>(null);
   const messageStreamRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
+  const questionInputRef = useRef<HTMLTextAreaElement>(null);
   // Sources now expand inline; this keeps the legacy dialog permanently closed.
   const openCitations: CitationRecord[] = [];
   const setOpenCitations = (_citations: CitationRecord[]) => { void _citations; };
@@ -985,6 +985,14 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
   useEffect(() => {
     messageStreamRef.current?.scrollTo({ top: messageStreamRef.current.scrollHeight });
   }, [asking, messages.length]);
+
+  useEffect(() => {
+    const textarea = questionInputRef.current;
+    if (!textarea) return;
+    textarea.style.height = "0px";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 156)}px`;
+    textarea.style.overflowY = textarea.scrollHeight > 156 ? "auto" : "hidden";
+  }, [question]);
 
   const keepComposerAboveKeyboard = () => {
     const scrollToLatestMessage = () => {
@@ -1063,7 +1071,7 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
         {asking && <article className="message-bubble assistant pending"><LoaderCircle className="spin" /><p>Reading the rulebook…</p></article>}
       </div>
       <form className="question-composer" ref={composerRef} onFocusCapture={keepComposerAboveKeyboard} onSubmit={(event) => { event.preventDefault(); void submit(); }}>
-        <Textarea rows={1} value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask about the rules" onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submit(); } }} />
+        <Textarea ref={questionInputRef} rows={1} value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask about the rules" onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submit(); } }} />
         <Button size="icon" disabled={asking || !question.trim()} aria-label="Ask question"><Send /></Button>
       </form>
       {openCitations.length > 0 && (
@@ -1219,7 +1227,7 @@ export function AppHomePreview() {
         ) : view === "rulebooks" ? (
           <RulebooksWorkspace library={previewLibrary} onBack={openHome} onSelect={setSelectedId} />
         ) : view === "new-chat" ? (
-          <NewChatWorkspace library={previewLibrary} query={searchQuery} setQuery={setSearchQuery} results={searchResults} searching={false} runSearch={async () => setSearchResults(searchQuery.trim() ? [{ id: 224517, name: searchQuery.trim(), year: 2020 }] : [])} onBack={openHome} onSelect={setSelectedId} onAdd={async (game) => { const id = `preview-${game.id}` as Id<"libraryGames">; setPreviewLibrary((current) => current.some((row) => row._id === id) ? current : [...current, { _id: id, status: "ready", statusLabel: "Ready", statusMessage: "Ready for your next question", progress: 100, game: { bggId: game.id, name: game.name, year: game.year } }]); setSelectedId(id); }} onImport={async (game) => { const id = `preview-${game.id}` as Id<"libraryGames">; setPreviewLibrary((current) => [...current, { _id: id, status: "ready", statusLabel: "Ready", statusMessage: "Ready for your next question", progress: 100, game: { bggId: game.id, name: game.name, year: game.year } }]); setSelectedId(id); }} />
+          <NewChatWorkspace library={previewLibrary} query={searchQuery} setQuery={setSearchQuery} results={searchResults} searching={false} runSearch={async () => setSearchResults(searchQuery.trim() ? [{ id: 224517, name: searchQuery.trim(), year: 2020 }] : [])} onBack={openHome} onSelect={setSelectedId} onAdd={async (game) => { const id = `preview-${game.id}` as Id<"libraryGames">; setPreviewLibrary((current) => current.some((row) => row._id === id) ? current : [...current, { _id: id, status: "ready", statusLabel: "Ready", statusMessage: "Ready for your next question", progress: 100, game: { bggId: game.id, name: game.name, year: game.year } }]); setSelectedId(id); }} />
         ) : (
           <HomeWorkspace library={previewActiveLibrary} onAdd={() => setView("new-chat")} onRulebooks={() => setView("rulebooks")} onSettings={() => setView("settings")} onSelect={setSelectedId} onArchive={async (id) => setPreviewLibrary((current) => current.map((row) => row._id === id ? { ...row, archivedAt: Date.now() } : row))} />
         )}
@@ -1315,8 +1323,7 @@ function ChatActionsSheet({ chat, onClose, onArchive }: { chat: LibraryRow; onCl
   );
 }
 
-function NewChatWorkspace({ library, query, setQuery, results, searching, runSearch, onBack, onSelect, onAdd, onImport }: { library: LibraryRow[]; query: string; setQuery: (value: string) => void; results: GameSearchResult[]; searching: boolean; runSearch: () => Promise<void>; onBack: () => void; onSelect: (id: Id<"libraryGames">) => void; onAdd: (game: GameSearchResult) => Promise<void>; onImport: (game: GameSearchResult, input: ManualRulebookInput) => Promise<void> }) {
-  const [importGame, setImportGame] = useState<GameSearchResult | null>(null);
+function NewChatWorkspace({ library, query, setQuery, results, searching, runSearch, onBack, onSelect, onAdd }: { library: LibraryRow[]; query: string; setQuery: (value: string) => void; results: GameSearchResult[]; searching: boolean; runSearch: () => Promise<void>; onBack: () => void; onSelect: (id: Id<"libraryGames">) => void; onAdd: (game: GameSearchResult) => Promise<void> }) {
   return (
     <div className="subscreen">
       <ScreenHeader title="New rules chat" onBack={onBack} />
@@ -1333,13 +1340,12 @@ function NewChatWorkspace({ library, query, setQuery, results, searching, runSea
         </form>
         {results.length > 0 && (
           <section className="catalog-results">
-            <div className="catalog-results-heading"><h2>Search results</h2><span><FileUp />Import PDF</span></div>
+            <div className="catalog-results-heading"><h2>Search results</h2></div>
             {results.map((game) => (
               <article key={game.id}>
                 <SearchResultCover game={game} />
                 <span><strong>{game.name}</strong><small>{game.year ?? "Year unknown"}{game.rank ? ` · BGG rank ${game.rank}` : ""}</small></span>
                 <div className="catalog-result-actions">
-                  <Button variant="outline" aria-label={`Import a rulebook for ${game.name}`} onClick={() => setImportGame(game)}><FileUp /></Button>
                   <Button variant="outline" aria-label={`Add ${game.name}`} onClick={() => void onAdd(game)}><Plus /></Button>
                 </div>
               </article>
@@ -1351,16 +1357,6 @@ function NewChatWorkspace({ library, query, setQuery, results, searching, runSea
           {library.map((row) => <RecentChatCard key={row._id} row={row} onSelect={onSelect} />)}
         </section>
       </div>
-      {importGame && (
-        <RulebookImportSheet
-          game={importGame}
-          onClose={() => setImportGame(null)}
-          onImport={async (input) => {
-            await onImport(importGame, input);
-            setImportGame(null);
-          }}
-        />
-      )}
     </div>
   );
 }

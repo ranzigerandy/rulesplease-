@@ -869,7 +869,7 @@
 .chat-empty p { font-size: 15px; }
 .question-composer { width: min(900px, calc(100% - 48px)); min-height: 64px; display: grid; grid-template-columns: minmax(0, 1fr) 48px; align-items: center; gap: 10px; margin: 0 auto 22px; padding: 7px 8px 7px 22px; border: 1px solid rgba(13, 13, 13, .12); border-radius: 999px; background: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .09); transition: border-color 140ms ease, box-shadow 140ms ease; }
 .question-composer:focus-within { border-color: rgba(13, 13, 13, .34); box-shadow: 0 10px 30px rgba(0, 0, 0, .09), 0 0 0 3px rgba(13, 13, 13, .05); }
-.question-composer textarea { width: 100%; min-height: 28px; max-height: 110px; overflow-y: auto; padding: 4px 0 3px; resize: none; border: 0; border-radius: 0; background: transparent; box-shadow: none; outline: none; font-size: 16px; line-height: 1.35; }
+.question-composer textarea { width: 100%; min-height: 28px; max-height: 156px; overflow-y: auto; padding: 4px 0 3px; resize: none; border: 0; border-radius: 0; background: transparent; box-shadow: none; outline: none; font-size: 16px; line-height: 1.35; }
 .rules-app .question-composer textarea:focus,
 .rules-app .question-composer textarea:focus-visible { border: 0; box-shadow: none; outline: none; }
 .question-composer button { width: 48px; height: 48px; border-radius: 50%; color: #fff; background: #0d0d0d; }
