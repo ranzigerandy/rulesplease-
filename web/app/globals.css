@@ -864,6 +864,7 @@
 .archive-chat-card > button:hover, .archive-chat-confirm button:hover { background: #f5dbd3; }
 .chat-empty { min-height: 100%; display: grid; place-items: center; align-content: center; gap: 10px; padding: 36px 0; color: #6f6f6f; text-align: center; }
 .chat-empty svg { width: 30px; height: 30px; color: #0d0d0d; }
+.chat-empty-mascot { width: 88px; height: 88px; margin-bottom: 2px; object-fit: contain; image-rendering: pixelated; }
 .chat-empty h2 { color: #0d0d0d; font-size: 26px; line-height: 1.1; font-weight: 650; }
 .chat-empty p { font-size: 15px; }
 .question-composer { width: min(900px, calc(100% - 48px)); min-height: 64px; display: grid; grid-template-columns: minmax(0, 1fr) 48px; align-items: center; gap: 10px; margin: 0 auto 22px; padding: 7px 8px 7px 22px; border: 1px solid rgba(13, 13, 13, .12); border-radius: 999px; background: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .09); transition: border-color 140ms ease, box-shadow 140ms ease; }

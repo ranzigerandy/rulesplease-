@@ -27,7 +27,6 @@ import {
   LibraryBig,
   Link2,
   LoaderCircle,
-  MessageSquareQuote,
   Plus,
   Search,
   Send,
@@ -986,7 +985,7 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
       <div className="message-stream" ref={messageStreamRef}>
         {messages.length === 0 ? (
           <div className="chat-empty">
-            <MessageSquareQuote />
+            <Image className="chat-empty-mascot" src="/rulesplease-mascot-thinking.png" alt="" width={88} height={88} priority />
             <h2>Ask about {gameName}</h2>
             <p>Setup, turn order, edge cases, scoring, or tiebreakers.</p>
           </div>
@@ -1089,9 +1088,20 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
 
 function ProcessingPanel({ game }: { game: LibraryRow }) {
   const needsAttention = game.status === "failed" || game.status === "review_required";
+  const isDownloadingRulebook = game.status === "downloading_rulebook";
   return (
     <div className="processing-panel">
-      <div className={`process-icon${needsAttention ? "" : " is-mascot"}`}>{needsAttention ? <CircleAlert /> : <Image src="/rulesplease-mascot-searching.png" alt="Rules Please mascot searching for a rulebook" width={88} height={88} priority />}</div>
+      <div className={`process-icon${needsAttention ? "" : " is-mascot"}`}>
+        {needsAttention ? <CircleAlert /> : (
+          <Image
+            src={isDownloadingRulebook ? "/rulesplease-mascot-downloading.png" : "/rulesplease-mascot-searching.png"}
+            alt={isDownloadingRulebook ? "Rules Please mascot downloading a rulebook" : "Rules Please mascot searching for a rulebook"}
+            width={88}
+            height={88}
+            priority
+          />
+        )}
+      </div>
       <h2>{game.statusLabel}</h2>
       <p>{game.statusMessage}</p>
       <div className="progress-track"><span style={{ width: `${Math.min(100, Math.max(0, game.progress))}%` }} /></div>
