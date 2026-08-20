@@ -471,6 +471,13 @@ function WorkspaceContent() {
                   approvingExpansionId={approvingExpansionId}
                   onApproveExpansion={approveExpansionRulebook}
                   onRemoveExpansion={async (expansionLibraryGameId) => { await removeExpansion({ libraryGameId: selected._id, expansionLibraryGameId }); toast.success("Expansion removed from this chat"); }}
+                  onArchive={async () => {
+                    await archiveChat({ libraryGameId: selected._id });
+                    setShowRulebookInfo(false);
+                    setChatThreadId(null);
+                    setSelectedId(null);
+                    toast.success("Chat archived", { description: "You can still find it under Archived chats in Settings." });
+                  }}
                 />
               )}
               {showRulebookImport && selectedImportGame && (
@@ -673,7 +680,10 @@ function RulebookRetry({ gameName, reason, replacing, onReplace, onImport }: { g
   );
 }
 
-function RulebookInfoSheet({ gameName, gameId, source, rulebook, expansions, reusedSharedRulebook, replacing, onClose, onReplace, onAddExpansions, approvingExpansionId, onApproveExpansion, onRemoveExpansion }: { gameName: string; gameId?: number; source: LibraryRow["rulebookSource"]; rulebook: LibraryRow["rulebook"]; expansions: NonNullable<LibraryRow["expansions"]>; reusedSharedRulebook?: boolean; replacing: boolean; onClose: () => void; onReplace: () => void; onAddExpansions: (expansions: GameSearchResult[]) => Promise<void>; approvingExpansionId: Id<"libraryGames"> | null; onApproveExpansion: (expansionLibraryGameId: Id<"libraryGames">) => Promise<void>; onRemoveExpansion: (expansionLibraryGameId: Id<"libraryGames">) => Promise<void> }) {
+function RulebookInfoSheet({ gameName, gameId, source, rulebook, expansions, reusedSharedRulebook, replacing, onClose, onReplace, onAddExpansions, approvingExpansionId, onApproveExpansion, onRemoveExpansion, onArchive }: { gameName: string; gameId?: number; source: LibraryRow["rulebookSource"]; rulebook: LibraryRow["rulebook"]; expansions: NonNullable<LibraryRow["expansions"]>; reusedSharedRulebook?: boolean; replacing: boolean; onClose: () => void; onReplace: () => void; onAddExpansions: (expansions: GameSearchResult[]) => Promise<void>; approvingExpansionId: Id<"libraryGames"> | null; onApproveExpansion: (expansionLibraryGameId: Id<"libraryGames">) => Promise<void>; onRemoveExpansion: (expansionLibraryGameId: Id<"libraryGames">) => Promise<void>; onArchive: () => Promise<void> }) {
+  const [showExpansionPicker, setShowExpansionPicker] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   return (
     <div className="source-backdrop" role="presentation" onMouseDown={onClose}>
       <section className="source-sheet rulebook-info-sheet" role="dialog" aria-modal="true" aria-label={`${gameName} rulebook information`} onMouseDown={(event) => event.stopPropagation()}>
@@ -682,10 +692,21 @@ function RulebookInfoSheet({ gameName, gameId, source, rulebook, expansions, reu
           <button type="button" onClick={onClose} aria-label="Close rulebook information"><X /></button>
         </header>
         <div className="rulebook-info-content">
+          <div className="rulebook-info-actions">
+            <button type="button" className="add-expansions-button" onClick={() => setShowExpansionPicker((current) => !current)}><Plus />Add expansion</button>
+            {source && <a className="rulebook-source-link" href={source.url} target="_blank" rel="noreferrer">Open complete rulebook <ExternalLink /></a>}
+          </div>
+          {showExpansionPicker && <ExpansionPicker excludeGameId={gameId} onAdd={async (newExpansions) => { await onAddExpansions(newExpansions); setShowExpansionPicker(false); }} />}
           <div className="wrong-rulebook-card">
             <TriangleAlert />
             <div><strong>Wrong game or edition?</strong></div>
             <button type="button" disabled={replacing} onClick={onReplace}>{replacing ? <LoaderCircle className="spin" /> : <RefreshCw />}{replacing ? "Replacing…" : "Reject & replace"}</button>
+          </div>
+          <div className="archive-chat-card">
+            <div><Archive /><span><strong>Archive chat</strong><small>Remove it from your overview without deleting it.</small></span></div>
+            {confirmArchive ? (
+              <div className="archive-chat-confirm"><p>Archive this chat?</p><span><button type="button" onClick={() => setConfirmArchive(false)}>Cancel</button><button type="button" disabled={archiving} onClick={async () => { setArchiving(true); try { await onArchive(); } finally { setArchiving(false); } }}>{archiving ? "Archiving…" : "Archive"}</button></span></div>
+            ) : <button type="button" onClick={() => setConfirmArchive(true)}>Archive</button>}
           </div>
         </div>
       </section>
