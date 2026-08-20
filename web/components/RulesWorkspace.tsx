@@ -702,7 +702,12 @@ function RulebookInfoSheet({ gameName, gameId, source, rulebook, expansions, reu
               <div className="attached-expansions">
                 {expansions.map((expansion) => (
                   <div key={expansion.libraryGameId}>
-                    <span><strong>{expansion.game.name}</strong><small>{expansion.status === "ready" ? "Ready to use" : expansion.statusLabel}</small></span>
+                    <span>
+                      <strong>{expansion.game.name}</strong>
+                      {expansion.rulebookSource ? (
+                        <a className="review-expansion-source" href={expansion.rulebookSource.url} target="_blank" rel="noreferrer">{expansion.status === "ready" ? "Open rulebook" : "Preview rulebook"}<ExternalLink /></a>
+                      ) : <small>{expansion.status === "ready" ? "Ready to use" : expansion.statusLabel}</small>}
+                    </span>
                   </div>
                 ))}
               </div>
