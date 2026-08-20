@@ -1,6 +1,5 @@
 "use client";
 
-import { UserMenu } from "@/components/UserMenu";
 import { MessageResponse } from "@/components/ai-elements/message";
 import { RulebookViewer, type RulebookViewerSource } from "@/components/RulebookViewer";
 import { SignInButton, useUser } from "@clerk/nextjs";
@@ -1129,7 +1128,7 @@ export function AppSettingsPreview() {
   return (
     <main className="rules-app">
       <section className="rules-main">
-        <SettingsWorkspace email="you@example.com" count={2} onBack={() => undefined} userName="Preview player" showUserMenu={false} answerLanguage={answerLanguage} onAnswerLanguageChange={setAnswerLanguage} showCitations={showCitations} onShowCitationsChange={setShowCitations} onReportWrongCitation={() => undefined} />
+        <SettingsWorkspace email="you@example.com" count={2} onBack={() => undefined} userName="Preview player" answerLanguage={answerLanguage} onAnswerLanguageChange={setAnswerLanguage} showCitations={showCitations} onShowCitationsChange={setShowCitations} onReportWrongCitation={() => undefined} />
       </section>
     </main>
   );
@@ -1294,7 +1293,7 @@ function RulebookImportSheet({ game, onClose, onImport }: { game: GameSearchResu
   );
 }
 
-function SettingsWorkspace({ email, count, onBack, userName, profileImageUrl, showUserMenu = true, answerLanguage, onAnswerLanguageChange, showCitations, onShowCitationsChange, onReportWrongCitation }: { email: string; count: number; onBack: () => void; userName: string; profileImageUrl?: string; showUserMenu?: boolean; answerLanguage: string; onAnswerLanguageChange: (language: string) => void; showCitations: boolean; onShowCitationsChange: (value: boolean) => void; onReportWrongCitation: () => void }) {
+function SettingsWorkspace({ email, count, onBack, userName, profileImageUrl, answerLanguage, onAnswerLanguageChange, showCitations, onShowCitationsChange, onReportWrongCitation }: { email: string; count: number; onBack: () => void; userName: string; profileImageUrl?: string; answerLanguage: string; onAnswerLanguageChange: (language: string) => void; showCitations: boolean; onShowCitationsChange: (value: boolean) => void; onReportWrongCitation: () => void }) {
   const [showAbout, setShowAbout] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const languages = ["Auto", "English", "Nederlands", "Français", "Deutsch", "Español"];
@@ -1311,7 +1310,6 @@ function SettingsWorkspace({ email, count, onBack, userName, profileImageUrl, sh
             </div>
           )}
           <span><small>{userName}</small></span>
-          {showUserMenu && <UserMenu>{userName}</UserMenu>}
         </div>
         <SettingsSection title="Account" rows={[{ label: "Subscription", value: "Local MVP", arrow: true }, { label: "Email", value: email }]} />
         <section className="settings-section">
@@ -1327,6 +1325,7 @@ function SettingsWorkspace({ email, count, onBack, userName, profileImageUrl, sh
           <div>
             <button type="button" onClick={onReportWrongCitation}><span>Report wrong citation</span><em><ChevronRight /></em></button>
             <button type="button" onClick={() => setShowAbout(true)}><span>About Rules Please!</span><em><ChevronRight /></em></button>
+            <button type="button" onClick={() => toast.message("Feedback is coming soon.")}><span>Leave feedback</span><em><ChevronRight /></em></button>
           </div>
         </section>
       </div>
