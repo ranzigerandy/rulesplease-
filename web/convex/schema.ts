@@ -46,6 +46,7 @@ export default defineSchema({
     statusLabel: v.string(),
     statusMessage: v.string(),
     progress: v.number(),
+    archivedAt: v.optional(v.number()),
     addedAt: v.number(),
     updatedAt: v.number(),
   })

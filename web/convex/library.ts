@@ -472,6 +472,20 @@ export const remove = mutation({
   },
 });
 
+export const archive = mutation({
+  args: { libraryGameId: v.id("libraryGames") },
+  returns: v.null(),
+  handler: async (ctx, { libraryGameId }) => {
+    const userId = await requireUserId(ctx);
+    const libraryGame = await ctx.db.get(libraryGameId);
+    if (!libraryGame || libraryGame.userId !== userId) {
+      throw new Error("Library game not found");
+    }
+    await ctx.db.patch(libraryGameId, { archivedAt: Date.now(), updatedAt: Date.now() });
+    return null;
+  },
+});
+
 export const reportWrongRulebook = mutation({
   args: { libraryGameId: v.id("libraryGames") },
   returns: v.null(),

@@ -13,6 +13,7 @@ import Image from "next/image";
 import {
   ArrowLeft,
   ArrowRight,
+  Archive,
   BookOpenCheck,
   BookOpenText,
   Check,
@@ -62,6 +63,7 @@ type LibraryRow = {
   statusMessage: string;
   progress: number;
   updatedAt?: number;
+  archivedAt?: number;
   game: {
     bggId: number;
     name: string;
@@ -136,6 +138,7 @@ function WorkspaceContent() {
   const addGame = useMutation(api.library.add);
   const addExpansions = useMutation(api.library.addExpansions);
   const removeExpansion = useMutation(api.library.removeExpansion);
+  const archiveChat = useMutation(api.library.archive);
   const addManualRulebook = useMutation(api.library.addManualRulebook);
   const generateRulebookUploadUrl = useMutation(api.library.generateRulebookUploadUrl);
   const reportWrongRulebook = useMutation(api.library.reportWrongRulebook);
@@ -363,7 +366,11 @@ function WorkspaceContent() {
     }
   }
 
-  const rows = [...(library ?? [])].sort((left, right) => (right.updatedAt ?? 0) - (left.updatedAt ?? 0));
+  const rows = library ?? [];
+  const activeRows = rows
+    .filter((row) => !row.archivedAt)
+    .sort((left, right) => (right.updatedAt ?? 0) - (left.updatedAt ?? 0));
+  const archivedCount = rows.filter((row) => Boolean(row.archivedAt)).length;
   return (
     <>
       <Toaster theme="light" />
@@ -378,9 +385,9 @@ function WorkspaceContent() {
           </div>
 
           <div className="rail-chat-list">
-            {library === undefined ? <RailSkeleton /> : rows.length === 0 ? (
+            {library === undefined ? <RailSkeleton /> : activeRows.length === 0 ? (
               <button className="rail-empty" onClick={() => openView("new-chat")}><LibraryBig /><span>Add your first game</span></button>
-            ) : rows.map((row) => (
+            ) : activeRows.map((row) => (
               <button key={row._id} className={`rail-chat ${row._id === selectedId ? "active" : ""}`} onClick={() => openChat(row._id)}>
                 <GameCover game={row.game} />
                 <span><strong>{row.game?.name ?? "Unknown game"}</strong><small>{row.status === "ready" ? row.statusMessage : `${row.progress}% · ${row.statusLabel}`}</small></span>
@@ -493,7 +500,8 @@ function WorkspaceContent() {
           ) : view === "settings" ? (
             <SettingsWorkspace
               email={user?.primaryEmailAddress?.emailAddress ?? "Signed in"}
-              count={rows.length}
+              count={activeRows.length}
+              archivedCount={archivedCount}
               onBack={() => openView("home")}
               userName={user?.fullName ?? user?.firstName ?? "Player"}
               profileImageUrl={user?.imageUrl}
@@ -510,11 +518,15 @@ function WorkspaceContent() {
             <RulebooksWorkspace library={rows} onBack={() => openView("home")} onSelect={openChat} />
           ) : (
             <HomeWorkspace
-              library={rows}
+              library={activeRows}
               onAdd={() => openView("new-chat")}
               onRulebooks={() => openView("rulebooks")}
               onSettings={() => openView("settings")}
               onSelect={openChat}
+              onArchive={async (id) => {
+                await archiveChat({ libraryGameId: id });
+                toast.success("Chat archived", { description: "You can still find its rulebook in Rulebooks." });
+              }}
             />
           )}
         </section>
@@ -1082,8 +1094,9 @@ function SearchResultCover({ game }: { game: GameSearchResult }) {
   );
 }
 
-function HomeWorkspace({ library, onAdd, onRulebooks, onSettings, onSelect }: { library: LibraryRow[]; onAdd: () => void; onRulebooks: () => void; onSettings: () => void; onSelect: (id: Id<"libraryGames">) => void }) {
+function HomeWorkspace({ library, onAdd, onRulebooks, onSettings, onSelect, onArchive }: { library: LibraryRow[]; onAdd: () => void; onRulebooks: () => void; onSettings: () => void; onSelect: (id: Id<"libraryGames">) => void; onArchive: (id: Id<"libraryGames">) => Promise<void> }) {
   const [filter, setFilter] = useState("");
+  const [archiveTarget, setArchiveTarget] = useState<LibraryRow | null>(null);
   const filtered = library.filter((row) => row.game?.name.toLowerCase().includes(filter.toLowerCase()));
   return (
     <div className="home-screen">
@@ -1101,22 +1114,53 @@ function HomeWorkspace({ library, onAdd, onRulebooks, onSettings, onSelect }: { 
           <div className="home-empty"><LibraryBig /><strong>Your table is ready.</strong><span>Add a game to create your first rules chat.</span></div>
         ) : filtered.length === 0 ? (
           <div className="home-empty"><Search /><strong>No chats found</strong><span>Try another game title.</span></div>
-        ) : filtered.map((row) => <RecentChatCard key={row._id} row={row} onSelect={onSelect} />)}
+        ) : filtered.map((row) => <RecentChatCard key={row._id} row={row} onSelect={onSelect} onOpenActions={() => setArchiveTarget(row)} />)}
       </section>
       <Button className="home-new-chat" onClick={onAdd}>New chat <ArrowRight /></Button>
+      {archiveTarget && <ChatActionsSheet chat={archiveTarget} onClose={() => setArchiveTarget(null)} onArchive={async () => { await onArchive(archiveTarget._id); setArchiveTarget(null); }} />}
     </div>
   );
 }
 
 export function AppHomePreview() {
-  const previewLibrary: LibraryRow[] = [
+  const [previewLibrary, setPreviewLibrary] = useState<LibraryRow[]>([
     { _id: "preview-cascadia" as Id<"libraryGames">, status: "ready", statusLabel: "Ready", statusMessage: "1 question saved", progress: 100, game: { bggId: 295947, name: "Cascadia", year: 2021, thumbnailUrl: "/rulesplease-mascot.png" } },
     { _id: "preview-wingspan" as Id<"libraryGames">, status: "ready", statusLabel: "Ready", statusMessage: "Ready for your next question", progress: 100, game: { bggId: 266192, name: "Wingspan", year: 2019, thumbnailUrl: "/rulesplease-mascot.png" } },
-  ];
+  ]);
+  const [view, setView] = useState<AppView>("home");
+  const [selectedId, setSelectedId] = useState<Id<"libraryGames"> | null>(null);
+  const [question, setQuestion] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<GameSearchResult[]>([]);
+  const [answerLanguage, setAnswerLanguage] = useState("Auto");
+  const [showCitations, setShowCitations] = useState(true);
+  const selected = previewLibrary.find((row) => row._id === selectedId) ?? null;
+  const previewActiveLibrary = previewLibrary.filter((row) => !row.archivedAt);
+  const previewArchivedCount = previewLibrary.length - previewActiveLibrary.length;
+
+  const openHome = () => {
+    setSelectedId(null);
+    setView("home");
+  };
+
   return (
     <main className="rules-app">
       <section className="rules-main">
-        <HomeWorkspace library={previewLibrary} onAdd={() => undefined} onRulebooks={() => undefined} onSettings={() => undefined} onSelect={() => undefined} />
+        {selected ? (
+          <div className="subscreen">
+            <ScreenHeader title={selected.game?.name ?? "Chat"} onBack={openHome} />
+            <ChatPanel gameName={selected.game?.name ?? "this game"} messages={messages} citations={[]} question={question} setQuestion={setQuestion} asking={false} showCitations={showCitations} onReportCitation={async () => undefined} submit={async () => { if (!question.trim()) return; setMessages((current) => [...current, { id: `preview-question-${Date.now()}`, role: "user", text: question }, { id: `preview-answer-${Date.now()}`, role: "assistant", text: "This is a local preview. Your real rulebook stays unchanged." }]); setQuestion(""); }} />
+          </div>
+        ) : view === "settings" ? (
+          <SettingsWorkspace email="you@example.com" count={previewActiveLibrary.length} archivedCount={previewArchivedCount} onBack={openHome} userName="Preview player" answerLanguage={answerLanguage} onAnswerLanguageChange={setAnswerLanguage} showCitations={showCitations} onShowCitationsChange={setShowCitations} onReportWrongCitation={openHome} />
+        ) : view === "rulebooks" ? (
+          <RulebooksWorkspace library={previewLibrary} onBack={openHome} onSelect={setSelectedId} />
+        ) : view === "new-chat" ? (
+          <NewChatWorkspace library={previewLibrary} query={searchQuery} setQuery={setSearchQuery} results={searchResults} searching={false} runSearch={async () => setSearchResults(searchQuery.trim() ? [{ id: 224517, name: searchQuery.trim(), year: 2020 }] : [])} onBack={openHome} onSelect={setSelectedId} onAdd={async (game) => { const id = `preview-${game.id}` as Id<"libraryGames">; setPreviewLibrary((current) => current.some((row) => row._id === id) ? current : [...current, { _id: id, status: "ready", statusLabel: "Ready", statusMessage: "Ready for your next question", progress: 100, game: { bggId: game.id, name: game.name, year: game.year } }]); setSelectedId(id); }} onImport={async (game) => { const id = `preview-${game.id}` as Id<"libraryGames">; setPreviewLibrary((current) => [...current, { _id: id, status: "ready", statusLabel: "Ready", statusMessage: "Ready for your next question", progress: 100, game: { bggId: game.id, name: game.name, year: game.year } }]); setSelectedId(id); }} />
+        ) : (
+          <HomeWorkspace library={previewActiveLibrary} onAdd={() => setView("new-chat")} onRulebooks={() => setView("rulebooks")} onSettings={() => setView("settings")} onSelect={setSelectedId} onArchive={async (id) => setPreviewLibrary((current) => current.map((row) => row._id === id ? { ...row, archivedAt: Date.now() } : row))} />
+        )}
       </section>
     </main>
   );
@@ -1128,22 +1172,84 @@ export function AppSettingsPreview() {
   return (
     <main className="rules-app">
       <section className="rules-main">
-        <SettingsWorkspace email="you@example.com" count={2} onBack={() => undefined} userName="Preview player" answerLanguage={answerLanguage} onAnswerLanguageChange={setAnswerLanguage} showCitations={showCitations} onShowCitationsChange={setShowCitations} onReportWrongCitation={() => undefined} />
+        <SettingsWorkspace email="you@example.com" count={2} archivedCount={0} onBack={() => undefined} userName="Preview player" answerLanguage={answerLanguage} onAnswerLanguageChange={setAnswerLanguage} showCitations={showCitations} onShowCitationsChange={setShowCitations} onReportWrongCitation={() => undefined} />
       </section>
     </main>
   );
 }
 
-function RecentChatCard({ row, onSelect }: { row: LibraryRow; onSelect: (id: Id<"libraryGames">) => void }) {
+function RecentChatCard({ row, onSelect, onOpenActions }: { row: LibraryRow; onSelect: (id: Id<"libraryGames">) => void; onOpenActions?: () => void }) {
+  const pointerStartX = useRef<number | null>(null);
+  const swipeDistance = useRef(0);
+  const wasSwipe = useRef(false);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+
+  const resetSwipe = () => {
+    pointerStartX.current = null;
+    swipeDistance.current = 0;
+    setSwipeOffset(0);
+  };
+
   return (
-    <button className="recent-chat-card" onClick={() => onSelect(row._id)}>
-      <GameCover game={row.game} />
-      <span>
-        <strong>{row.game?.name ?? "Unknown game"}</strong>
-        <small>{row.statusMessage}</small>
-        <em>{row.status === "ready" ? "Ready to chat" : row.statusLabel}</em>
-      </span>
-    </button>
+    <div className="recent-chat-swipe">
+      <span className="recent-chat-archive-hint" aria-hidden="true"><Archive />Archive</span>
+      <button
+        className="recent-chat-card"
+        style={swipeOffset ? { transform: `translateX(-${swipeOffset}px)` } : undefined}
+        onClick={() => {
+          if (wasSwipe.current) {
+            wasSwipe.current = false;
+            return;
+          }
+          onSelect(row._id);
+        }}
+        onContextMenu={(event) => {
+          if (!onOpenActions) return;
+          event.preventDefault();
+          onOpenActions();
+        }}
+        onPointerDown={(event) => {
+          if (!onOpenActions || event.pointerType !== "touch") return;
+          pointerStartX.current = event.clientX;
+          wasSwipe.current = false;
+        }}
+        onPointerMove={(event) => {
+          if (pointerStartX.current === null) return;
+          const distance = Math.max(0, pointerStartX.current - event.clientX);
+          swipeDistance.current = distance;
+          if (distance > 10) wasSwipe.current = true;
+          setSwipeOffset(Math.min(96, distance));
+        }}
+        onPointerUp={() => {
+          const shouldConfirm = swipeDistance.current >= 54;
+          resetSwipe();
+          if (shouldConfirm && onOpenActions) onOpenActions();
+        }}
+        onPointerCancel={resetSwipe}
+      >
+        <GameCover game={row.game} />
+        <span>
+          <strong>{row.game?.name ?? "Unknown game"}</strong>
+          <small>{row.statusMessage}</small>
+          <em>{row.status === "ready" ? "Ready to chat" : row.statusLabel}</em>
+        </span>
+      </button>
+    </div>
+  );
+}
+
+function ChatActionsSheet({ chat, onClose, onArchive }: { chat: LibraryRow; onClose: () => void; onArchive: () => Promise<void> }) {
+  const [archiving, setArchiving] = useState(false);
+  return (
+    <div className="chat-actions-backdrop" role="presentation" onMouseDown={onClose}>
+      <section className="chat-actions-sheet" role="dialog" aria-modal="true" aria-labelledby="chat-actions-title" onMouseDown={(event) => event.stopPropagation()}>
+        <span>{chat.game?.name ?? "Chat"}</span>
+        <h2 id="chat-actions-title">Archive this chat?</h2>
+        <p>It will disappear from your overview. You can still see it under Archived chats in Settings.</p>
+        <button type="button" className="archive-chat-action" disabled={archiving} onClick={async () => { setArchiving(true); await onArchive(); }}><Archive />{archiving ? "Archiving…" : "Archive chat"}</button>
+        <button type="button" className="cancel-chat-action" onClick={onClose}>Cancel</button>
+      </section>
+    </div>
   );
 }
 
@@ -1293,7 +1399,7 @@ function RulebookImportSheet({ game, onClose, onImport }: { game: GameSearchResu
   );
 }
 
-function SettingsWorkspace({ email, count, onBack, userName, profileImageUrl, answerLanguage, onAnswerLanguageChange, showCitations, onShowCitationsChange, onReportWrongCitation }: { email: string; count: number; onBack: () => void; userName: string; profileImageUrl?: string; answerLanguage: string; onAnswerLanguageChange: (language: string) => void; showCitations: boolean; onShowCitationsChange: (value: boolean) => void; onReportWrongCitation: () => void }) {
+function SettingsWorkspace({ email, count, archivedCount, onBack, userName, profileImageUrl, answerLanguage, onAnswerLanguageChange, showCitations, onShowCitationsChange, onReportWrongCitation }: { email: string; count: number; archivedCount: number; onBack: () => void; userName: string; profileImageUrl?: string; answerLanguage: string; onAnswerLanguageChange: (language: string) => void; showCitations: boolean; onShowCitationsChange: (value: boolean) => void; onReportWrongCitation: () => void }) {
   const [showAbout, setShowAbout] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const languages = ["Auto", "English", "Nederlands", "Français", "Deutsch", "Español"];
@@ -1319,7 +1425,7 @@ function SettingsWorkspace({ email, count, onBack, userName, profileImageUrl, an
             <button type="button" className="settings-switch" role="switch" aria-checked={showCitations} onClick={() => onShowCitationsChange(!showCitations)}><span>Answer with citations</span><i className={`settings-toggle ${showCitations ? "is-on" : ""}`} /></button>
           </div>
         </section>
-        <SettingsSection title="Data" rows={[{ label: "Chats", value: String(count) }, { label: "Rulebooks", value: String(count) }, { label: "Data controls", arrow: true }]} />
+        <SettingsSection title="Data" rows={[{ label: "Chats", value: String(count) }, { label: "Rulebooks", value: String(count) }, { label: "Archived chats", value: String(archivedCount) }, { label: "Data controls", arrow: true }]} />
         <section className="settings-section">
           <h2>Support</h2>
           <div>
