@@ -1088,9 +1088,10 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
 }
 
 function ProcessingPanel({ game }: { game: LibraryRow }) {
+  const needsAttention = game.status === "failed" || game.status === "review_required";
   return (
     <div className="processing-panel">
-      <div className="process-icon">{game.status === "failed" || game.status === "review_required" ? <CircleAlert /> : <BookOpenCheck />}</div>
+      <div className={`process-icon${needsAttention ? "" : " is-mascot"}`}>{needsAttention ? <CircleAlert /> : <Image src="/rulesplease-mascot-searching.png" alt="Rules Please mascot searching for a rulebook" width={88} height={88} priority />}</div>
       <h2>{game.statusLabel}</h2>
       <p>{game.statusMessage}</p>
       <div className="progress-track"><span style={{ width: `${Math.min(100, Math.max(0, game.progress))}%` }} /></div>

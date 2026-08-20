@@ -1230,6 +1230,8 @@
 .processing-panel { height: calc(100svh - 64px); padding-bottom: 100px; }
 .processing-panel h2 { font-size: 23px; }
 .process-icon { width: 48px; height: 48px; color: #111; background: #f1f1f1; }
+.process-icon.is-mascot { width: 88px; height: 88px; margin-bottom: 7px; background: transparent; }
+.process-icon.is-mascot img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
 .progress-track { width: min(290px,78vw); height: 5px; }
 .progress-track span { background: #111; }
 .rulebook-approval { min-height: calc(100svh - 64px); align-content: start; width: calc(100% - 32px); padding: 48px 0 30px; }
