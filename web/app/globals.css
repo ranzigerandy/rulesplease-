@@ -1220,7 +1220,8 @@
   box-shadow: none;
 }
 .recent-chat-swipe { position: relative; overflow: hidden; border-radius: 14px; }
-.recent-chat-archive-hint { position: absolute; inset: 0 0 0 auto; width: 96px; display: flex; align-items: center; justify-content: center; gap: 5px; color: #fff; background: #b74735; font-size: 12px; font-weight: 700; }
+.recent-chat-archive-hint { position: absolute; inset: 0 0 0 auto; width: 96px; display: flex; align-items: center; justify-content: center; gap: 5px; color: #fff; background: #b74735; font-size: 12px; font-weight: 700; opacity: 0; pointer-events: none; transition: opacity .12s ease; }
+.recent-chat-swipe.is-swiping .recent-chat-archive-hint { opacity: 1; }
 .recent-chat-archive-hint svg { width: 17px; height: 17px; }
 .recent-chat-card { position: relative; z-index: 1; -webkit-touch-callout: none; touch-action: pan-y; user-select: none; transition: transform .16s ease; }
 .chat-actions-backdrop { position: fixed; z-index: 50; inset: 0; display: grid; align-items: end; padding: 0; background: rgba(13,13,13,.26); }

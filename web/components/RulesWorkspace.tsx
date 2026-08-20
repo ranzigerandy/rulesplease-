@@ -1191,7 +1191,7 @@ function RecentChatCard({ row, onSelect, onOpenActions }: { row: LibraryRow; onS
   };
 
   return (
-    <div className="recent-chat-swipe">
+    <div className={`recent-chat-swipe${swipeOffset ? " is-swiping" : ""}`}>
       <span className="recent-chat-archive-hint" aria-hidden="true"><Archive />Archive</span>
       <button
         className="recent-chat-card"
