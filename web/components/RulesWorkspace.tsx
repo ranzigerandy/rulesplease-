@@ -688,19 +688,18 @@ function RulebookInfoSheet({ gameName, gameId, source, rulebook, expansions, reu
     <div className="source-backdrop" role="presentation" onMouseDown={onClose}>
       <section className="source-sheet rulebook-info-sheet" role="dialog" aria-modal="true" aria-label={`${gameName} rulebook information`} onMouseDown={(event) => event.stopPropagation()}>
         <header>
-          <div><h2>{gameName}</h2></div>
+          <div><h2>{gameName}</h2>{source && <a className="rulebook-header-link" href={source.url} target="_blank" rel="noreferrer">Open rulebook <ExternalLink /></a>}</div>
           <button type="button" onClick={onClose} aria-label="Close rulebook information"><X /></button>
         </header>
         <div className="rulebook-info-content">
           <div className="rulebook-info-actions">
             <button type="button" className="add-expansions-button" onClick={() => setShowExpansionPicker((current) => !current)}><Plus />Add expansion</button>
-            {source && <a className="rulebook-source-link" href={source.url} target="_blank" rel="noreferrer">Open complete rulebook <ExternalLink /></a>}
           </div>
           {showExpansionPicker && <ExpansionPicker excludeGameId={gameId} onAdd={async (newExpansions) => { await onAddExpansions(newExpansions); setShowExpansionPicker(false); }} />}
           <div className="wrong-rulebook-card">
             <TriangleAlert />
             <div><strong>Wrong game or edition?</strong></div>
-            <button type="button" disabled={replacing} onClick={onReplace}>{replacing ? <LoaderCircle className="spin" /> : <RefreshCw />}{replacing ? "Replacing…" : "Reject & replace"}</button>
+            <button type="button" disabled={replacing} onClick={onReplace}>{replacing ? <LoaderCircle className="spin" /> : <RefreshCw />}{replacing ? "Replacing…" : "Replace"}</button>
           </div>
           <div className="archive-chat-card">
             <div><Archive /><span><strong>Archive chat</strong><small>Remove it from your overview without deleting it.</small></span></div>

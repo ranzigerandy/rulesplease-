@@ -776,8 +776,12 @@
 .rulebook-page-nav svg { width: 15px; height: 15px; }
 .rulebook-info-sheet { width: min(560px, 100%); }
 .rulebook-info-content { min-height: 0; display: grid; gap: 18px; padding: 22px; overflow-y: auto; }
-.rulebook-info-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.rulebook-info-actions .add-expansions-button, .rulebook-info-actions .rulebook-source-link { width: 100%; min-height: 46px; }
+.rulebook-info-sheet > header > div { display: grid; gap: 3px; }
+.rulebook-header-link { width: fit-content; display: inline-flex; align-items: center; gap: 5px; color: #595959; font-size: 12px; font-weight: 650; text-decoration: none; }
+.rulebook-header-link:hover { color: #0d0d0d; text-decoration: underline; text-underline-offset: 3px; }
+.rulebook-header-link svg { width: 14px; height: 14px; }
+.rulebook-info-actions { display: grid; gap: 10px; }
+.rulebook-info-actions .add-expansions-button { width: 100%; min-height: 46px; }
 .archive-chat-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 15px 16px; border: 1px solid rgba(157, 53, 36, .16); border-radius: 16px; background: #fff8f6; }
 .archive-chat-card > div:first-child { display: flex; align-items: flex-start; gap: 10px; }
 .archive-chat-card > div:first-child > svg { width: 20px; height: 20px; flex: 0 0 auto; color: #9d3524; }
@@ -1022,7 +1026,6 @@
   .rulebook-page-nav { gap: 6px; padding: 0 8px; }
   .rulebook-page-nav button { min-height: 38px; padding: 0 10px; font-size: 11px; }
   .rulebook-info-content { padding: 18px 18px calc(24px + env(safe-area-inset-bottom)); }
-  .rulebook-info-actions { grid-template-columns: 1fr; }
   .wrong-rulebook-card { grid-template-columns: 22px minmax(0, 1fr); }
   .wrong-rulebook-card button { grid-column: 1 / -1; justify-content: center; }
   .subscreen { min-height: 100svh; padding-bottom: 18px; }
@@ -1116,6 +1119,7 @@
 .home-settings svg { width: 19px; height: 19px; }
 .home-actions { display: block; }
 .chat-search { min-height: 44px; gap: 9px; padding: 0 13px; border: 0; border-radius: 12px; background: #f2f2f2; }
+.chat-search:focus-within { box-shadow: none; }
 .chat-search svg { width: 17px; height: 17px; }
 .chat-search input { font-size: 15px; }
 .home-rulebooks-link { width: 100%; min-height: 58px; display: grid; grid-template-columns: 28px minmax(0,1fr) 18px; align-items: center; gap: 10px; margin-top: 13px; padding: 8px 4px; border: 0; border-bottom: 1px solid rgba(13,13,13,.08); background: transparent; text-align: left; }
@@ -1262,6 +1266,14 @@
   font-weight: 700;
 }
 .rules-app:not(.is-chat) .home-new-chat:hover { background: hsl(183 47% 53%); }
+
+@media (max-width: 900px) {
+  html, body, .rules-app, .rules-main, .home-screen, .subscreen, .message-stream, .rulebook-info-content, .rules-app.is-chat .rulebook-approval {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  html::-webkit-scrollbar, body::-webkit-scrollbar, .rules-app::-webkit-scrollbar, .rules-main::-webkit-scrollbar, .home-screen::-webkit-scrollbar, .subscreen::-webkit-scrollbar, .message-stream::-webkit-scrollbar, .rulebook-info-content::-webkit-scrollbar, .rules-app.is-chat .rulebook-approval::-webkit-scrollbar { display: none; }
+}
 .rules-app:not(.is-chat) .home-new-chat svg { width: 19px; height: 19px; }
 
 @media (min-width: 901px) {
