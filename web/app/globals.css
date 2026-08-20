@@ -1205,6 +1205,9 @@
 .rulebooks-content .new-chat-intro { justify-items: start; margin-bottom: 20px; text-align: left; }
 .rulebooks-content .new-chat-intro h1 { font-size: 24px; }
 .rulebooks-content .new-chat-intro p { max-width: none; margin: 0; }
+.rulebooks-intro { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin: 0 0 16px; }
+.rulebooks-intro h1 { margin: 0; color: #0d0d0d; font-size: 25px; line-height: 1.05; font-weight: 650; letter-spacing: -.025em; }
+.rulebooks-intro img { width: 76px; height: 76px; flex: 0 0 auto; object-fit: contain; image-rendering: pixelated; }
 .rulebook-list { gap: 0; }
 .rulebook-list button { min-height: 72px; grid-template-columns: 46px minmax(0,1fr) auto; gap: 12px; padding: 8px 4px; border: 0; border-bottom: 1px solid rgba(13,13,13,.07); border-radius: 0; }
 .rulebook-list .game-cover, .rulebook-list .game-monogram { width: 46px; height: 56px; border-radius: 8px; }

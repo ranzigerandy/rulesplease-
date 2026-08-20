@@ -1492,7 +1492,7 @@ function RulebooksWorkspace({ library, onBack, onSelect }: { library: LibraryRow
     <div className="subscreen">
       <ScreenHeader title="Rulebooks" onBack={onBack} />
       <div className="subscreen-content rulebooks-content">
-        <section className="new-chat-intro"><h1>Your rulebooks</h1><p>Every indexed game is ready for cited rules questions.</p></section>
+        <section className="rulebooks-intro"><h1>Your rulebooks</h1><Image src="/rulesplease-mascot-reading.png" alt="Rules Please mascot reading a rulebook" width={84} height={84} /></section>
         <div className="rulebook-list">
           {library.map((row) => (
             <button key={row._id} onClick={() => onSelect(row._id)}>
