@@ -10,6 +10,7 @@
 
 import type * as chat from "../chat.js";
 import type * as chatInternal from "../chatInternal.js";
+import type * as feedback from "../feedback.js";
 import type * as helpers from "../helpers.js";
 import type * as http from "../http.js";
 import type * as library from "../library.js";
@@ -28,6 +29,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   chat: typeof chat;
   chatInternal: typeof chatInternal;
+  feedback: typeof feedback;
   helpers: typeof helpers;
   http: typeof http;
   library: typeof library;

@@ -34,6 +34,7 @@ import {
   ShieldCheck,
   Info,
   RefreshCw,
+  RotateCcw,
   TriangleAlert,
   UserRound,
   X,
@@ -138,6 +139,7 @@ function WorkspaceContent() {
   const addExpansions = useMutation(api.library.addExpansions);
   const removeExpansion = useMutation(api.library.removeExpansion);
   const archiveChat = useMutation(api.library.archive);
+  const restoreChat = useMutation(api.library.restore);
   const addManualRulebook = useMutation(api.library.addManualRulebook);
   const generateRulebookUploadUrl = useMutation(api.library.generateRulebookUploadUrl);
   const reportWrongRulebook = useMutation(api.library.reportWrongRulebook);
@@ -145,6 +147,8 @@ function WorkspaceContent() {
   const getOrCreateThread = useMutation(api.chat.getOrCreateThread);
   const ask = useAction(api.chat.ask);
   const submitFeedback = useMutation(api.chat.submitFeedback);
+  const sendGeneralFeedback = useAction(api.feedback.sendGeneralFeedback);
+  const reportCitationByEmail = useAction(api.feedback.reportCitation);
   const [view, setView] = useState<AppView>("home");
   const [selectedId, setSelectedId] = useState<Id<"libraryGames"> | null>(null);
   const [chatThreadId, setChatThreadId] = useState<Id<"chatThreads"> | null>(null);
@@ -450,8 +454,13 @@ function WorkspaceContent() {
                 showCitations={showCitations}
                 onReportCitation={async (agentMessageId) => {
                   if (!activeChatThreadId) return;
-                  await submitFeedback({ chatThreadId: activeChatThreadId, agentMessageId, rating: "incorrect" });
-                  toast.success("Citation reported", { description: "Thanks — this helps us improve the rulebook sources." });
+                  try {
+                    await submitFeedback({ chatThreadId: activeChatThreadId, agentMessageId, rating: "incorrect" });
+                    await reportCitationByEmail({ gameName: selected.game?.name ?? "Unknown game", agentMessageId });
+                    toast.success("Citation reported", { description: "Your report was sent to the Rules Please team." });
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "The citation report could not be sent");
+                  }
                 }}
                 />
               )}
@@ -508,6 +517,7 @@ function WorkspaceContent() {
               email={user?.primaryEmailAddress?.emailAddress ?? "Signed in"}
               count={activeRows.length}
               archivedCount={archivedCount}
+              archivedChats={rows.filter((row) => Boolean(row.archivedAt)).sort((left, right) => (right.archivedAt ?? 0) - (left.archivedAt ?? 0))}
               onBack={() => openView("home")}
               userName={user?.fullName ?? user?.firstName ?? "Player"}
               profileImageUrl={user?.imageUrl}
@@ -515,9 +525,13 @@ function WorkspaceContent() {
               onAnswerLanguageChange={setAnswerLanguage}
               showCitations={showCitations}
               onShowCitationsChange={setShowCitations}
-              onReportWrongCitation={() => {
-                openView("home");
-                toast.message("Open the chat with the citation", { description: "Use Report citation beneath the answer to send your report." });
+              onRestoreChat={async (libraryGameId) => {
+                await restoreChat({ libraryGameId });
+                toast.success("Chat restored", { description: "It is back in your chat overview." });
+              }}
+              onSendFeedback={async (message) => {
+                await sendGeneralFeedback({ message });
+                toast.success("Feedback sent", { description: "Thanks for helping improve Rules Please!" });
               }}
             />
           ) : view === "rulebooks" ? (
@@ -1201,7 +1215,7 @@ export function AppHomePreview() {
             <ChatPanel gameName={selected.game?.name ?? "this game"} messages={messages} citations={[]} question={question} setQuestion={setQuestion} asking={false} showCitations={showCitations} onReportCitation={async () => undefined} submit={async () => { if (!question.trim()) return; setMessages((current) => [...current, { id: `preview-question-${Date.now()}`, role: "user", text: question }, { id: `preview-answer-${Date.now()}`, role: "assistant", text: "This is a local preview. Your real rulebook stays unchanged." }]); setQuestion(""); }} />
           </div>
         ) : view === "settings" ? (
-          <SettingsWorkspace email="you@example.com" count={previewActiveLibrary.length} archivedCount={previewArchivedCount} onBack={openHome} userName="Preview player" answerLanguage={answerLanguage} onAnswerLanguageChange={setAnswerLanguage} showCitations={showCitations} onShowCitationsChange={setShowCitations} onReportWrongCitation={openHome} />
+          <SettingsWorkspace email="you@example.com" count={previewActiveLibrary.length} archivedCount={previewArchivedCount} archivedChats={previewLibrary.filter((row) => Boolean(row.archivedAt))} onBack={openHome} userName="Preview player" answerLanguage={answerLanguage} onAnswerLanguageChange={setAnswerLanguage} showCitations={showCitations} onShowCitationsChange={setShowCitations} onRestoreChat={async (id) => setPreviewLibrary((current) => current.map((row) => row._id === id ? { ...row, archivedAt: undefined } : row))} onSendFeedback={async () => undefined} />
         ) : view === "rulebooks" ? (
           <RulebooksWorkspace library={previewLibrary} onBack={openHome} onSelect={setSelectedId} />
         ) : view === "new-chat" ? (
@@ -1220,7 +1234,7 @@ export function AppSettingsPreview() {
   return (
     <main className="rules-app">
       <section className="rules-main">
-        <SettingsWorkspace email="you@example.com" count={2} archivedCount={0} onBack={() => undefined} userName="Preview player" answerLanguage={answerLanguage} onAnswerLanguageChange={setAnswerLanguage} showCitations={showCitations} onShowCitationsChange={setShowCitations} onReportWrongCitation={() => undefined} />
+        <SettingsWorkspace email="you@example.com" count={2} archivedCount={0} archivedChats={[]} onBack={() => undefined} userName="Preview player" answerLanguage={answerLanguage} onAnswerLanguageChange={setAnswerLanguage} showCitations={showCitations} onShowCitationsChange={setShowCitations} onRestoreChat={async () => undefined} onSendFeedback={async () => undefined} />
       </section>
     </main>
   );
@@ -1447,10 +1461,27 @@ function RulebookImportSheet({ game, onClose, onImport }: { game: GameSearchResu
   );
 }
 
-function SettingsWorkspace({ email, count, archivedCount, onBack, userName, profileImageUrl, answerLanguage, onAnswerLanguageChange, showCitations, onShowCitationsChange, onReportWrongCitation }: { email: string; count: number; archivedCount: number; onBack: () => void; userName: string; profileImageUrl?: string; answerLanguage: string; onAnswerLanguageChange: (language: string) => void; showCitations: boolean; onShowCitationsChange: (value: boolean) => void; onReportWrongCitation: () => void }) {
+function SettingsWorkspace({ email, count, archivedCount, archivedChats, onBack, userName, profileImageUrl, answerLanguage, onAnswerLanguageChange, showCitations, onShowCitationsChange, onRestoreChat, onSendFeedback }: { email: string; count: number; archivedCount: number; archivedChats: LibraryRow[]; onBack: () => void; userName: string; profileImageUrl?: string; answerLanguage: string; onAnswerLanguageChange: (language: string) => void; showCitations: boolean; onShowCitationsChange: (value: boolean) => void; onRestoreChat: (libraryGameId: Id<"libraryGames">) => Promise<void>; onSendFeedback: (message: string) => Promise<void> }) {
   const [showAbout, setShowAbout] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const [showArchivedChats, setShowArchivedChats] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [sendingFeedback, setSendingFeedback] = useState(false);
   const languages = ["Auto", "English", "Nederlands", "Français", "Deutsch", "Español"];
+  const submitFeedbackMessage = async () => {
+    if (!feedbackMessage.trim()) return;
+    setSendingFeedback(true);
+    try {
+      await onSendFeedback(feedbackMessage.trim());
+      setFeedbackMessage("");
+      setShowFeedback(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The feedback could not be sent");
+    } finally {
+      setSendingFeedback(false);
+    }
+  };
   return (
     <div className="subscreen">
       <ScreenHeader title="Settings" onBack={onBack} />
@@ -1473,18 +1504,26 @@ function SettingsWorkspace({ email, count, archivedCount, onBack, userName, prof
             <button type="button" className="settings-switch" role="switch" aria-checked={showCitations} onClick={() => onShowCitationsChange(!showCitations)}><span>Answer with citations</span><i className={`settings-toggle ${showCitations ? "is-on" : ""}`} /></button>
           </div>
         </section>
-        <SettingsSection title="Data" rows={[{ label: "Chats", value: String(count) }, { label: "Rulebooks", value: String(count) }, { label: "Archived chats", value: String(archivedCount) }, { label: "Data controls", arrow: true }]} />
+        <section className="settings-section">
+          <h2>Data</h2>
+          <div>
+            <button type="button"><span>Chats</span><em>{count}</em></button>
+            <button type="button"><span>Rulebooks</span><em>{count}</em></button>
+            <button type="button" onClick={() => setShowArchivedChats(true)}><span>Archived chats</span><em>{archivedCount}<ChevronRight /></em></button>
+          </div>
+        </section>
         <section className="settings-section">
           <h2>Support</h2>
           <div>
-            <button type="button" onClick={onReportWrongCitation}><span>Report wrong citation</span><em><ChevronRight /></em></button>
             <button type="button" onClick={() => setShowAbout(true)}><span>About Rules Please!</span><em><ChevronRight /></em></button>
-            <button type="button" onClick={() => toast.message("Feedback is coming soon.")}><span>Leave feedback</span><em><ChevronRight /></em></button>
+            <button type="button" onClick={() => setShowFeedback(true)}><span>Leave feedback</span><em><ChevronRight /></em></button>
           </div>
         </section>
       </div>
       {showAbout && <div className="settings-dialog-backdrop" role="presentation" onMouseDown={() => setShowAbout(false)}><section className="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="about-rulesplease-title" onMouseDown={(event) => event.stopPropagation()}><h2 id="about-rulesplease-title">Rules Please!</h2><p>Clear answers to board-game rules, backed by the rulebook you added.</p><button type="button" onClick={() => setShowAbout(false)}>Done</button></section></div>}
       {showLanguagePicker && <div className="settings-dialog-backdrop settings-sheet-backdrop" role="presentation" onMouseDown={() => setShowLanguagePicker(false)}><section className="settings-language-sheet" role="dialog" aria-modal="true" aria-labelledby="answer-language-title" onMouseDown={(event) => event.stopPropagation()}><header><h2 id="answer-language-title">Answer language</h2><button type="button" aria-label="Close language picker" onClick={() => setShowLanguagePicker(false)}><X /></button></header><p>Choose the language for new answers.</p><div>{languages.map((language) => <button type="button" key={language} className={answerLanguage === language ? "selected" : ""} onClick={() => { onAnswerLanguageChange(language); setShowLanguagePicker(false); }}><span>{language}</span>{answerLanguage === language && <Check aria-label="Selected" />}</button>)}</div></section></div>}
+      {showArchivedChats && <div className="settings-dialog-backdrop settings-sheet-backdrop" role="presentation" onMouseDown={() => setShowArchivedChats(false)}><section className="settings-language-sheet archived-chats-sheet" role="dialog" aria-modal="true" aria-labelledby="archived-chats-title" onMouseDown={(event) => event.stopPropagation()}><header><h2 id="archived-chats-title">Archived chats</h2><button type="button" aria-label="Close archived chats" onClick={() => setShowArchivedChats(false)}><X /></button></header><p>Restore a chat whenever you want to bring it back to your overview.</p><div className="archived-chats-list">{archivedChats.length === 0 ? <p className="archived-chats-empty">No archived chats yet.</p> : archivedChats.map((chat) => <article key={chat._id}><GameCover game={chat.game} /><span><strong>{chat.game?.name ?? "Unknown game"}</strong><small>Archived chat</small></span><button type="button" onClick={() => void onRestoreChat(chat._id)}><RotateCcw />Restore</button></article>)}</div></section></div>}
+      {showFeedback && <div className="settings-dialog-backdrop settings-sheet-backdrop" role="presentation" onMouseDown={() => !sendingFeedback && setShowFeedback(false)}><section className="settings-language-sheet feedback-sheet" role="dialog" aria-modal="true" aria-labelledby="feedback-title" onMouseDown={(event) => event.stopPropagation()}><header><h2 id="feedback-title">Leave feedback</h2><button type="button" aria-label="Close feedback" disabled={sendingFeedback} onClick={() => setShowFeedback(false)}><X /></button></header><p>Tell us what worked well or what we can improve.</p><Textarea value={feedbackMessage} maxLength={2000} placeholder="Write your feedback…" onChange={(event) => setFeedbackMessage(event.target.value)} /><footer><small>{feedbackMessage.length}/2000</small><button type="button" disabled={sendingFeedback || !feedbackMessage.trim()} onClick={() => void submitFeedbackMessage()}>{sendingFeedback ? <LoaderCircle className="spin" /> : <Send />} {sendingFeedback ? "Sending…" : "Send feedback"}</button></footer></section></div>}
     </div>
   );
 }
