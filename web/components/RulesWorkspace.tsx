@@ -62,6 +62,7 @@ type LibraryRow = {
   statusLabel: string;
   statusMessage: string;
   progress: number;
+  updatedAt?: number;
   game: {
     bggId: number;
     name: string;
@@ -363,7 +364,7 @@ function WorkspaceContent() {
     }
   }
 
-  const rows = library ?? [];
+  const rows = [...(library ?? [])].sort((left, right) => (right.updatedAt ?? 0) - (left.updatedAt ?? 0));
   return (
     <>
       <Toaster theme="light" />
@@ -1094,7 +1095,7 @@ function HomeWorkspace({ library, onAdd, onRulebooks, onSettings, onSelect }: { 
       <div className="home-actions">
         <label className="chat-search"><Search /><input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Search chats…" /></label>
       </div>
-      <button className="home-rulebooks-link" onClick={onRulebooks}><BookOpenText /><span><strong>Rulebooks</strong><small>View indexed sources</small></span><ChevronRight /></button>
+      <button className="home-rulebooks-link" onClick={onRulebooks}><BookOpenText /><span><strong>Rulebooks</strong></span><ChevronRight /></button>
       <section className="recent-chats">
         <h2>Recent chats</h2>
         {library.length === 0 ? (
