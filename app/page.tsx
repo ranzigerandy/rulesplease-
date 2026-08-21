@@ -6,7 +6,6 @@ import {
   BookOpenCheck,
   MessageCircleQuestion,
   Sparkles,
-  TimerReset,
 } from "lucide-react";
 
 export default function Home() {
@@ -24,10 +23,9 @@ export default function Home() {
     <main>
       <header className="site-header shell" id="top">
         <a className="brand" href="#top" aria-label="Rules, Please! home">
-          <span className="brand-mark">RP</span>
-          <span>Rules, Please!</span>
+          <img src="/rulesplease-mascotte-wide.png" alt="Rules, Please! mascot" />
         </a>
-        <a className="header-link" href="#waitlist">Early access <ArrowRight size={15} /></a>
+        <a className="header-link" href="#waitlist">Get early access <ArrowRight size={15} /></a>
       </header>
 
       <section className="hero shell" aria-labelledby="hero-title">
@@ -54,9 +52,9 @@ export default function Home() {
           <h2 id="how-title">Settle it. Keep playing.</h2>
         </div>
         <div className="steps">
-          <article><span className="step-icon"><MessageCircleQuestion size={23} /></span><p className="step-number">01 · ASK</p><h3>Ask naturally</h3><p>Type the question exactly as it comes up during your turn.</p></article>
-          <article><span className="step-icon"><BookOpenCheck size={23} /></span><p className="step-number">02 · ANSWER</p><h3>See the ruling</h3><p>Get a clear answer with the rulebook context behind it.</p></article>
-          <article><span className="step-icon"><TimerReset size={23} /></span><p className="step-number">03 · PLAY</p><h3>Carry on</h3><p>Make the next move with confidence and keep the night flowing.</p></article>
+          <article><img className="step-mascot" src="/mascotte-thinking.png" alt="Rules, Please! mascot thinking" /></article>
+          <article><img className="step-mascot" src="/mascotte-reading.png" alt="Rules, Please! mascot reading a rulebook" /></article>
+          <article><img className="step-mascot" src="/mascotte-premium.png" alt="Rules, Please! mascot celebrating a ruling" /></article>
         </div>
       </section>
 
