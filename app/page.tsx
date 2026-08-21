@@ -12,7 +12,7 @@ export default function Home() {
           <img src="/rulesplease-mascotte-wide.png" alt="Rules, Please! mascot" />
           <span className="brand-name">Rules Please!</span>
         </a>
-        <a className="header-link" href="#waitlist">Get early access <ArrowRight size={15} /></a>
+        <a className="header-link" href="https://app.rulesplease.com">Get early access <ArrowRight size={15} /></a>
       </header>
 
       <section className="hero shell" aria-labelledby="hero-title">
@@ -20,7 +20,7 @@ export default function Home() {
           <p className="eyebrow">Your game-night rules expert</p>
           <h1 id="hero-title">Rules question?<br /><em>Just ask!</em></h1>
           <p className="lead">Get quick and clear answers to all your rule questions backed by citations from the actual board game rulebook.</p>
-          <a className="primary-cta" href="#waitlist">Get early access <ArrowRight size={18} aria-hidden="true" /></a>
+          <a className="primary-cta" href="https://app.rulesplease.com">Get early access <ArrowRight size={18} aria-hidden="true" /></a>
           <p className="cta-note">Become a beta user for free.</p>
         </div>
 
@@ -56,7 +56,7 @@ export default function Home() {
             <h2 id="source-title">Every answer has a <em>source.</em></h2>
             <p>All answers given by the Rules Please! app are based on the actual rulebook of the game and quote the exact passage where the answer can be found. So no mistakes and no hallucinations.</p>
             <p>Don&apos;t trust the answer? Simply click the source and you&apos;ll be taken directly to the exact passage in the game&apos;s rulebook!</p>
-            <a className="text-link" href="#waitlist">Get early access <ArrowRight size={17} /></a>
+            <a className="text-link" href="https://app.rulesplease.com">Get early access <ArrowRight size={17} /></a>
           </div>
         </div>
       </section>
@@ -92,7 +92,7 @@ export default function Home() {
           <p className="eyebrow">Your seat is saved</p>
           <h2 id="waitlist-title">Start playing<br /><em>smarter.</em></h2>
           <p>Sign up now for free and become one of our beta users.</p>
-          <a className="waitlist-signup" href="#top">Sign up for free <ArrowRight size={18} aria-hidden="true" /></a>
+          <a className="waitlist-signup" href="https://app.rulesplease.com">Sign up for free <ArrowRight size={18} aria-hidden="true" /></a>
         </div>
       </section>
 
