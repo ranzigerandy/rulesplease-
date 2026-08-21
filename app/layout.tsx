@@ -4,6 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Rules, Please! — More game. Less rulebook.",
   description: "Clear board-game rulings when you need them, so game night never loses momentum.",
+  icons: {
+    icon: "/rulesplease-favicon.png",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
