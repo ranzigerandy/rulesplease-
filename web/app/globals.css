@@ -96,21 +96,35 @@
 .steps-section p { color: var(--color-text-muted); font-size: .87rem; line-height: 1.55; }
 .marketing-footer { min-height: 92px; color: var(--color-text-muted); border-top: 1px solid var(--color-border); font-size: .8rem; }
 
-/* Clerk auth: same quiet, high-contrast card treatment as the original UI. */
-.auth-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(300px, .85fr) minmax(420px, 1.15fr); }
-.auth-story { display: flex; flex-direction: column; justify-content: center; padding: clamp(2rem, 8vw, 8rem); color: var(--color-text); background: var(--color-sidebar); border-right: 1px solid var(--color-border); }
-.auth-story > .quiet-link { position: absolute; top: 2rem; }
-.auth-story h1 { max-width: 480px; margin: 1rem 0; font-size: clamp(2.7rem, 4.5vw, 4.7rem); line-height: .96; font-weight: 650; }
-.auth-story > p:not(.eyebrow) { max-width: 480px; color: var(--color-text-muted); line-height: 1.6; }
-.auth-mark { display: grid; place-items: center; width: 3rem; height: 3rem; margin-bottom: 2rem; color: #fff; background: var(--color-accent); border-radius: 50%; }
-.auth-mark svg { width: 1.3rem; }
-.proof-line { display: flex; align-items: center; gap: .7rem; margin-top: 2rem; color: var(--color-text-muted); font-size: .875rem; }
-.proof-line svg { width: 1.1rem; color: var(--color-accent-positive); }
-.auth-panel { display: grid; place-items: center; min-width: 0; padding: clamp(1.5rem, 5vw, 4rem); color-scheme: light; background: var(--color-background); }
-.auth-panel .cl-rootBox, .auth-panel .cl-cardBox { width: min(420px, 100%); }
+/* Clerk auth: the landing-page palette, without changing the sign-in flow. */
+.auth-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(420px, .93fr) minmax(480px, 1.07fr); background: #fbf8f7; }
+.auth-story { position: relative; display: flex; flex-direction: column; justify-content: center; overflow: hidden; padding: clamp(2rem, 7vw, 7rem); color: #fff; background: #29213a; isolation: isolate; }
+.auth-story::before, .auth-story::after { position: absolute; z-index: -1; width: 23rem; height: 23rem; border-radius: 50%; content: ""; }
+.auth-story::before { top: -13rem; right: -9rem; background: #ef6d60; opacity: .96; }
+.auth-story::after { bottom: -15rem; left: -12rem; background: #62c6cc; opacity: .75; }
+.auth-story > .quiet-link { position: absolute; top: 2rem; left: clamp(2rem, 7vw, 7rem); color: rgba(255,255,255,.76); font-weight: 650; text-decoration: none; }
+.auth-story > .quiet-link:hover { color: #fff; }
+.auth-brand { position: absolute; top: 1.55rem; right: clamp(2rem, 7vw, 7rem); display: inline-flex; align-items: center; gap: .6rem; color: #fff; font-size: .95rem; font-weight: 800; letter-spacing: -.035em; }
+.auth-brand img { width: 2.6rem; height: 2.6rem; object-fit: contain; image-rendering: pixelated; }
+.auth-story-copy { max-width: 31rem; }
+.auth-story .eyebrow { display: inline-flex; align-items: center; gap: .42rem; margin-bottom: 1rem; color: #8de0e3; font-size: .69rem; font-weight: 800; letter-spacing: .12em; }
+.auth-story .eyebrow svg { width: .9rem; height: .9rem; }
+.auth-story h1 { margin: 0; color: #fff; font-size: clamp(3.35rem, 5.6vw, 5.8rem); font-weight: 800; letter-spacing: -.07em; line-height: .9; }
+.auth-story h1 em { color: #ef6d60; font-style: normal; }
+.auth-story-copy > p:not(.eyebrow) { max-width: 27rem; margin: 1.45rem 0 0; color: rgba(255,255,255,.78); font-size: 1.03rem; line-height: 1.6; }
+.auth-rule-preview { width: min(19rem, 92%); display: grid; gap: .38rem; margin: 2.25rem 0 0 2rem; padding: 1.1rem 1.2rem; color: #123d42; border: 2px solid rgba(255,255,255,.72); border-radius: 1rem; background: #62c6cc; box-shadow: -11px 11px 0 #ef6d60; transform: rotate(2deg); }
+.auth-rule-preview span { font-size: .59rem; font-weight: 850; letter-spacing: .12em; }
+.auth-rule-preview strong { font-size: 1.1rem; letter-spacing: -.035em; }
+.auth-rule-preview small { color: rgba(18,61,66,.72); font-size: .72rem; }
+.proof-line { display: flex; align-items: center; gap: .6rem; margin-top: 2.25rem; color: rgba(255,255,255,.82); font-size: .8rem; font-weight: 650; }
+.proof-line svg { width: 1.1rem; height: 1.1rem; color: #8de0e3; }
+.auth-panel { position: relative; display: grid; place-items: center; min-width: 0; padding: clamp(1.5rem, 5vw, 4.5rem); color-scheme: light; background: #fbf8f7; }
+.auth-panel::before { position: absolute; top: 12%; right: 10%; width: 7rem; height: 7rem; border: 1px dashed rgba(41,33,58,.18); border-radius: 50%; content: ""; }
+.auth-panel .cl-rootBox, .auth-panel .cl-cardBox { position: relative; z-index: 1; width: min(430px, 100%); }
+.auth-panel .cl-card { border: 1px solid rgba(41,33,58,.1); border-radius: 1.35rem; box-shadow: 0 22px 52px rgba(41,33,58,.11); }
 .auth-panel .cl-formButtonPrimary { transition: background-color .18s ease, transform .18s ease; }
-.auth-panel .cl-formButtonPrimary:hover { background: #292929; transform: translateY(-1px); }
-.auth-panel .cl-formFieldInput:focus { border-color: #0d0d0d; box-shadow: 0 0 0 3px rgba(13, 13, 13, .10); }
+.auth-panel .cl-formButtonPrimary:hover { background: #8dd5d8; transform: translateY(-2px); }
+.auth-panel .cl-formFieldInput:focus { border-color: #62c6cc; box-shadow: 0 0 0 3px rgba(98,198,204,.22); }
 
 /* App workspace */
 .workspace-shell { min-height: 100vh; display: grid; grid-template-columns: 320px minmax(0, 1fr); background: var(--color-background); }
@@ -193,8 +207,11 @@
   .steps-section { grid-template-columns: 1fr; }
   .steps-section > div { min-height: auto; border-right: 0; border-bottom: 1px solid var(--color-border); }
   .auth-shell { grid-template-columns: 1fr; }
-  .auth-story { min-height: 340px; padding: 5rem 1.5rem 3rem; border-right: 0; border-bottom: 1px solid var(--color-border); }
+  .auth-story { min-height: 390px; padding: 6.75rem 1.5rem 3.5rem; }
   .auth-story > .quiet-link { left: 1.5rem; }
+  .auth-brand { right: 1.5rem; }
+  .auth-story h1 { font-size: clamp(3.1rem, 12vw, 4.5rem); }
+  .auth-rule-preview { margin-top: 1.6rem; }
   .auth-panel { padding: 3rem 1rem 4rem; }
   .workspace-shell { grid-template-columns: 92px minmax(0, 1fr); }
   .library-rail { padding: .8rem; }
