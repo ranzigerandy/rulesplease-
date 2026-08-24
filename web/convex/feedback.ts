@@ -49,15 +49,33 @@ export const sendGeneralFeedback = action({
 });
 
 export const reportCitation = action({
-  args: { gameName: v.string(), agentMessageId: v.string() },
+  args: {
+    gameName: v.string(),
+    agentMessageId: v.string(),
+    question: v.optional(v.string()),
+    answer: v.optional(v.string()),
+    citations: v.optional(v.array(v.object({
+      page: v.number(),
+      quote: v.string(),
+      sourceLabel: v.string(),
+      sourceUrl: v.string(),
+    }))),
+  },
   returns: v.null(),
-  handler: async (ctx, { gameName, agentMessageId }) => {
+  handler: async (ctx, { gameName, agentMessageId, question, answer, citations }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
+    const sourceDetails = (citations ?? []).length > 0
+      ? (citations ?? []).map((citation, index) => [
+        `${index + 1}. ${citation.sourceLabel} — page ${citation.page}`,
+        `Passage: ${citation.quote.slice(0, 1_500)}`,
+        `Link: ${citation.sourceUrl}`,
+      ].join("\n")).join("\n\n")
+      : "No citation details were available.";
     await sendEmail({
       subject: `Citation report: ${gameName.slice(0, 120)}`,
       replyTo: identity.email ?? undefined,
-      text: `From: ${identity.name ?? "Rules Please user"}\nEmail: ${identity.email ?? "Not provided"}\nGame: ${gameName.slice(0, 200)}\nAnswer ID: ${agentMessageId.slice(0, 200)}\n\nThe user reported this citation as incorrect.`,
+      text: `From: ${identity.name ?? "Rules Please user"}\nEmail: ${identity.email ?? "Not provided"}\nGame: ${gameName.slice(0, 200)}\n\nThe user reported this citation as incorrect.\n\nQuestion:\n${question?.slice(0, 5_000) ?? "Not available (reported from an older website version)."}\n\nAnswer:\n${answer?.slice(0, 10_000) ?? "Not available (reported from an older website version)."}\n\nReported citation(s):\n${sourceDetails}\n\nAnswer ID: ${agentMessageId.slice(0, 200)}`,
     });
     return null;
   },

@@ -452,11 +452,17 @@ function WorkspaceContent() {
                 asking={asking}
                 submit={submitQuestion}
                 showCitations={showCitations}
-                onReportCitation={async (agentMessageId) => {
+                onReportCitation={async ({ agentMessageId, question, answer, citations }) => {
                   if (!activeChatThreadId) return;
                   try {
                     await submitFeedback({ chatThreadId: activeChatThreadId, agentMessageId, rating: "incorrect" });
-                    await reportCitationByEmail({ gameName: selected.game?.name ?? "Unknown game", agentMessageId });
+                    await reportCitationByEmail({
+                      gameName: selected.game?.name ?? "Unknown game",
+                      agentMessageId,
+                      question,
+                      answer,
+                      citations: citations.map(({ page, quote, sourceLabel, sourceUrl }) => ({ page, quote, sourceLabel, sourceUrl })),
+                    });
                     toast.success("Citation reported", { description: "Your report was sent to the Rules Please team." });
                   } catch (error) {
                     toast.error(error instanceof Error ? error.message : "The citation report could not be sent");
@@ -925,7 +931,7 @@ function CitationPassage({ quote, answer }: { quote: string; answer: string }) {
   return <blockquote>{before}{highlight && <strong>{highlight}</strong>}{after}</blockquote>;
 }
 
-function ChatPanel({ gameName, messages, citations, question, setQuestion, asking, submit, showCitations, onReportCitation }: { gameName: string; messages: ChatMessage[]; citations: CitationRecord[]; question: string; setQuestion: (value: string) => void; asking: boolean; submit: () => Promise<void>; showCitations: boolean; onReportCitation: (agentMessageId: string) => Promise<void> }) {
+function ChatPanel({ gameName, messages, citations, question, setQuestion, asking, submit, showCitations, onReportCitation }: { gameName: string; messages: ChatMessage[]; citations: CitationRecord[]; question: string; setQuestion: (value: string) => void; asking: boolean; submit: () => Promise<void>; showCitations: boolean; onReportCitation: (report: { agentMessageId: string; question: string; answer: string; citations: CitationRecord[] }) => Promise<void> }) {
   const [expandedCitationMessageId, setExpandedCitationMessageId] = useState<string | null>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
   const messageStreamRef = useRef<HTMLDivElement>(null);
@@ -1011,11 +1017,18 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
             <h2>Ask about {gameName}</h2>
             <p>Setup, turn order, edge cases, scoring, or tiebreakers.</p>
           </div>
-        ) : messages.map((message) => {
+        ) : messages.map((message, messageIndex) => {
           const role = message.role ?? "assistant";
           const rawText = message.parts?.filter((part) => part.type === "text").map((part) => part.text ?? "").join("\n") ?? message.text ?? "";
           const text = visibleMessageText(role, rawText);
           const rawMessageCitations = citationMap.get(message.id) ?? [];
+          const precedingQuestion = [...messages.slice(0, messageIndex)].reverse().find((candidate) => candidate.role === "user");
+          const questionText = precedingQuestion
+            ? visibleMessageText(
+              "user",
+              precedingQuestion.parts?.filter((part) => part.type === "text").map((part) => part.text ?? "").join("\n") ?? precedingQuestion.text ?? "",
+            )
+            : "Question unavailable";
           if (role === "user" && rawMessageCitations.length > 0) return null;
           if (role === "assistant" && !text.trim()) return null;
           const messageCitations = role === "assistant"
@@ -1063,7 +1076,7 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
                 </div>
               )}
               {showCitations && role === "assistant" && messageCitations.length > 0 && (
-                <button type="button" className="citation-report" onClick={() => void onReportCitation(message.id)}><Flag />Report citation</button>
+                <button type="button" className="citation-report" onClick={() => void onReportCitation({ agentMessageId: message.id, question: questionText, answer: text, citations: rawMessageCitations })}><Flag />Report citation</button>
               )}
             </article>
           );
