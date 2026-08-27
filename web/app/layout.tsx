@@ -26,7 +26,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Rules Please! — Board-game answers with sources",
+  title: "Answers to all your board game rules questions | Rules Please!",
   description: "Find, index, and ask questions about board-game rulebooks.",
 };
 

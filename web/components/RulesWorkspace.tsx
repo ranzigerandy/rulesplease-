@@ -1547,13 +1547,24 @@ function SettingsSection({ title, rows }: { title: string; rows: Array<{ label: 
 }
 
 function RulebooksWorkspace({ library, onBack, onSelect }: { library: LibraryRow[]; onBack: () => void; onSelect: (id: Id<"libraryGames">) => void }) {
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const visibleLibrary = normalizedQuery
+    ? library.filter((row) => row.game?.name.toLocaleLowerCase().includes(normalizedQuery))
+    : library;
+
   return (
     <div className="subscreen">
       <ScreenHeader title="Rulebooks" onBack={onBack} />
       <div className="subscreen-content rulebooks-content">
-        <section className="rulebooks-intro"><h1>Your rulebooks</h1><Image src="/rulesplease-mascot-reading.png" alt="Rules Please mascot reading a rulebook" width={84} height={84} /></section>
+        <section className="rulebooks-intro"><h1>Your rulebooks</h1><Image src="/rulesplease-mascot-reading.png" alt="Rules Please mascot reading a rulebook" width={56} height={56} /></section>
+        <label className="rulebooks-search">
+          <Search aria-hidden="true" />
+          <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your games" aria-label="Search your rulebooks" />
+          {query ? <button type="button" onClick={() => setQuery("")} aria-label="Clear search"><X /></button> : null}
+        </label>
         <div className="rulebook-list">
-          {library.map((row) => (
+          {visibleLibrary.map((row) => (
             <button key={row._id} onClick={() => onSelect(row._id)}>
               <GameCover game={row.game} />
               <span><strong>{row.game?.name}</strong><small>{row.statusMessage}</small></span>
@@ -1561,6 +1572,7 @@ function RulebooksWorkspace({ library, onBack, onSelect }: { library: LibraryRow
             </button>
           ))}
         </div>
+        {normalizedQuery && visibleLibrary.length === 0 ? <p className="rulebooks-empty">No games found for “{query.trim()}”.</p> : null}
       </div>
     </div>
   );

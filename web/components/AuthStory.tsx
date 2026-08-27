@@ -8,8 +8,8 @@ type AuthStoryProps = {
 
 const content = {
   "sign-up": {
-    title: <>Your rules.<br />All in one place.</>,
-    description: "Build a private library of games and rulebooks, then keep every cited answer close at hand.",
+    title: <>Rules question?<br />Just ask!</>,
+    description: "Get quick and clear answers to all your rule questions, backed by citations from the actual boardgame rulebook.",
     proof: "Your library stays private to your account.",
   },
   "sign-in": {
@@ -29,10 +29,6 @@ export function AuthStory({ mode }: AuthStoryProps) {
         <div className="auth-brand-lockup">
           <Image src="/rulesplease-mascot.png" alt="Rules Please! mascot" width={48} height={48} priority />
           <span>Rules<span>, Please!</span></span>
-        </div>
-        <div className="auth-story-art" aria-hidden="true">
-          <Image src="/rulesplease-mascot-reading.png" alt="" width={180} height={180} priority />
-          <span>RULEBOOK<br />READY</span>
         </div>
         <p className="eyebrow">YOUR GAME-NIGHT COMPANION</p>
         <h1 id="auth-story-title">{story.title}</h1>
