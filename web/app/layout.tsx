@@ -28,6 +28,9 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "Answers to all your board game rules questions | Rules Please!",
   description: "Find, index, and ask questions about board-game rulebooks.",
+  icons: {
+    icon: "/rulesplease-mascot.png",
+  },
 };
 
 export const viewport: Viewport = {
