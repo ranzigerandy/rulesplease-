@@ -10,7 +10,7 @@ const content = {
   "sign-up": {
     title: <>Rules question?<br />Just ask!</>,
     description: "Get quick and clear answers to all your rule questions, backed by citations from the actual boardgame rulebook.",
-    proof: "Your library stays private to your account.",
+    proof: null,
   },
   "sign-in": {
     title: <>Pick up where<br />you left off.</>,
@@ -33,7 +33,7 @@ export function AuthStory({ mode }: AuthStoryProps) {
         <p className="eyebrow">YOUR GAME-NIGHT COMPANION</p>
         <h1 id="auth-story-title">{story.title}</h1>
         <p className="auth-story-description">{story.description}</p>
-        <div className="proof-line"><BookOpenCheck aria-hidden="true" /> {story.proof}</div>
+        {story.proof && <div className="proof-line"><BookOpenCheck aria-hidden="true" /> {story.proof}</div>}
       </div>
     </section>
   );
