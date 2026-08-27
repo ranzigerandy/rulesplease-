@@ -97,15 +97,24 @@
 .marketing-footer { min-height: 92px; color: var(--color-text-muted); border-top: 1px solid var(--color-border); font-size: .8rem; }
 
 /* Clerk auth: same quiet, high-contrast card treatment as the original UI. */
-.auth-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(300px, .85fr) minmax(420px, 1.15fr); }
-.auth-story { display: flex; flex-direction: column; justify-content: center; padding: clamp(2rem, 8vw, 8rem); color: var(--color-text); background: var(--color-sidebar); border-right: 1px solid var(--color-border); }
-.auth-story > .quiet-link { position: absolute; top: 2rem; }
-.auth-story h1 { max-width: 480px; margin: 1rem 0; font-size: clamp(2.7rem, 4.5vw, 4.7rem); line-height: .96; font-weight: 650; }
-.auth-story > p:not(.eyebrow) { max-width: 480px; color: var(--color-text-muted); line-height: 1.6; }
-.auth-mark { display: grid; place-items: center; width: 3rem; height: 3rem; margin-bottom: 2rem; color: #fff; background: var(--color-accent); border-radius: 50%; }
-.auth-mark svg { width: 1.3rem; }
-.proof-line { display: flex; align-items: center; gap: .7rem; margin-top: 2rem; color: var(--color-text-muted); font-size: .875rem; }
-.proof-line svg { width: 1.1rem; color: var(--color-accent-positive); }
+.auth-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(360px, .95fr) minmax(420px, 1.05fr); }
+.auth-story { --auth-ink: #29213a; --auth-cream: #fbf8f7; --auth-aqua: #65c3c8; --auth-aqua-deep: #347f85; --auth-coral: #e86b5b; position: relative; display: grid; align-content: center; padding: clamp(2rem, 7vw, 7rem); overflow: hidden; color: var(--auth-ink); background: var(--auth-cream); border-right: 1px solid rgba(41, 33, 58, .10); }
+.auth-story::before { position: absolute; right: -12rem; bottom: -15rem; width: 32rem; height: 32rem; border-radius: 50%; background: var(--auth-aqua); content: ""; opacity: .20; }
+.auth-back-link { position: absolute; z-index: 1; top: clamp(1.5rem, 3vw, 2.5rem); left: clamp(1.5rem, 3.5vw, 4rem); color: rgba(41, 33, 58, .70); }
+.auth-back-link:hover { color: var(--auth-ink); }
+.auth-story-content { position: relative; z-index: 1; width: min(100%, 31rem); }
+.auth-brand-lockup { display: inline-flex; align-items: center; gap: .55rem; margin-bottom: clamp(2.25rem, 5vw, 4.25rem); color: var(--auth-ink); font-size: 1.05rem; font-weight: 800; letter-spacing: -.055em; }
+.auth-brand-lockup img { width: 2.6rem; height: 2.6rem; object-fit: contain; }
+.auth-brand-lockup > span > span { color: var(--auth-coral); }
+.auth-story-art { position: relative; display: flex; height: 10.5rem; align-items: end; justify-content: space-between; margin: 0 0 1.75rem; padding: .85rem 1.1rem; overflow: hidden; border: 1px solid rgba(41, 33, 58, .10); border-radius: 1.35rem; background: linear-gradient(145deg, #e1f3f2, #f5eeea 70%); box-shadow: 0 16px 30px rgba(41, 33, 58, .08); }
+.auth-story-art::after { position: absolute; right: 0; bottom: 0; left: 0; height: 3.25rem; border-top: 1px dashed rgba(52, 127, 133, .26); background: rgba(255, 253, 252, .48); content: ""; }
+.auth-story-art img { position: relative; z-index: 1; width: 10rem; height: 10rem; object-fit: contain; object-position: bottom left; transform: translate(-.45rem, .65rem); filter: drop-shadow(0 10px 9px rgba(41, 33, 58, .14)); }
+.auth-story-art span { position: relative; z-index: 1; margin-bottom: .2rem; color: var(--auth-aqua-deep); font-family: var(--font-geist-mono), monospace; font-size: .65rem; font-weight: 650; letter-spacing: .12em; line-height: 1.45; text-align: right; }
+.auth-story .eyebrow { color: var(--auth-aqua-deep); font-size: .72rem; font-weight: 700; letter-spacing: .09em; }
+.auth-story h1 { max-width: 480px; margin: .75rem 0 1rem; font-size: clamp(2.7rem, 4.25vw, 4.6rem); line-height: .95; font-weight: 800; letter-spacing: -.06em; }
+.auth-story-description { max-width: 29rem; color: rgba(41, 33, 58, .72); line-height: 1.65; }
+.proof-line { display: flex; align-items: center; gap: .7rem; margin-top: 2rem; color: rgba(41, 33, 58, .72); font-size: .875rem; }
+.proof-line svg { width: 1.1rem; flex: 0 0 auto; color: var(--auth-aqua-deep); }
 .auth-panel { display: grid; place-items: center; min-width: 0; padding: clamp(1.5rem, 5vw, 4rem); color-scheme: light; background: var(--color-background); }
 .auth-panel .cl-rootBox, .auth-panel .cl-cardBox { width: min(420px, 100%); }
 .auth-panel .cl-formButtonPrimary { transition: background-color .18s ease, transform .18s ease; }
