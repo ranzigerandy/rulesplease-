@@ -2,6 +2,8 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 
+const MAX_REJECTED_DECISIONS_PER_CLAIM = 20;
+
 function assertLease(
   job: { status: string; leaseToken?: string; leaseExpiresAt?: number } | null,
   leaseToken: string,
@@ -63,7 +65,7 @@ export const claim = internalMutation({
       .query("rulebookDecisions")
       .withIndex("by_library_game_id", (q) => q.eq("libraryGameId", job.libraryGameId))
       .order("desc")
-      .take(100);
+      .take(MAX_REJECTED_DECISIONS_PER_CLAIM);
     const rejectedDecisions = decisions.filter((decision) => decision.decision === "rejected");
     const rejectedRecords = await Promise.all(rejectedDecisions.map(async (decision) => ({
       source: await ctx.db.get(decision.sourceId),

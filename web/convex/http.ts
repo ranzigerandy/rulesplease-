@@ -5,6 +5,8 @@ import { env, httpAction } from "./_generated/server";
 
 const http = httpRouter();
 
+class WorkerAuthorizationError extends Error {}
+
 function json(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), {
     status,
@@ -15,7 +17,7 @@ function json(value: unknown, status = 200) {
 function authorizeWorker(request: Request) {
   const secret = env.RULES_PLEASE_WORKER_SECRET;
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
-    throw new Error("Unauthorized");
+    throw new WorkerAuthorizationError("Unauthorized");
   }
 }
 
@@ -83,7 +85,11 @@ const claim = httpAction(async (ctx, request) => {
     });
     return json(claimed);
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : "Invalid request" }, 401);
+    const unauthorized = error instanceof WorkerAuthorizationError;
+    return json(
+      { error: error instanceof Error ? error.message : "Worker claim failed" },
+      unauthorized ? 401 : 503,
+    );
   }
 });
 

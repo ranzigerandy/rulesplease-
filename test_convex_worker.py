@@ -1,5 +1,7 @@
 import os
+import io
 import unittest
+import urllib.error
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -20,6 +22,27 @@ class FakeApi:
 
 
 class ConvexWorkerFlowTests(unittest.TestCase):
+    def test_transient_convex_limit_error_is_retryable_even_when_mislabeled_unauthorized(self):
+        api = convex_worker.WorkerApi.__new__(convex_worker.WorkerApi)
+        api.site_url = "https://example.convex.site"
+        api.secret = "test-secret"
+        response = io.BytesIO(b'{"error":"Your request timed out performing too many system operations."}')
+        error = urllib.error.HTTPError(
+            "https://example.convex.site/worker/jobs/claim",
+            401,
+            "Unauthorized",
+            {},
+            response,
+        )
+        with patch("urllib.request.urlopen", side_effect=error):
+            with self.assertRaises(convex_worker.WorkerApiError) as raised:
+                api.post("/worker/jobs/claim", {"workerId": "test-worker"})
+        self.assertTrue(raised.exception.retryable)
+
+    def test_real_unauthorized_error_is_not_retryable(self):
+        error = convex_worker.WorkerApiError(401, '{"error":"Unauthorized"}')
+        self.assertFalse(error.retryable)
+
     def test_imported_uncertain_rulebook_indexes_without_a_second_confirmation(self):
         api = FakeApi()
         with TemporaryDirectory() as directory:

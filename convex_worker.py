@@ -24,6 +24,22 @@ LEASE_MS = 300_000
 HEALTH = {"status": "starting", "workerId": None, "lastJobAt": None, "lastError": None}
 
 
+class WorkerApiError(RuntimeError):
+    def __init__(self, status_code, detail):
+        self.status_code = status_code
+        self.detail = detail
+        normalized = detail.lower()
+        self.retryable = status_code in {408, 425, 429, 500, 502, 503, 504} or any(
+            message in normalized
+            for message in (
+                "too many system operations",
+                "request timed out",
+                "try again later",
+            )
+        )
+        super().__init__(f"Convex worker endpoint failed ({status_code}): {detail[:500]}")
+
+
 def log_event(event, **fields):
     print(json.dumps({"timestamp": time.time(), "event": event, **fields}, default=str), flush=True)
 
@@ -79,7 +95,7 @@ class WorkerApi:
                 result = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"Convex worker endpoint failed ({exc.code}): {detail[:500]}") from exc
+            raise WorkerApiError(exc.code, detail) from exc
         if isinstance(result, dict) and result.get("error"):
             raise RuntimeError(result["error"])
         return result
@@ -452,7 +468,9 @@ def main():
                 "/worker/jobs/claim",
                 {"workerId": worker_id, "leaseMs": LEASE_MS},
             )
-        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as exc:
+        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError, WorkerApiError) as exc:
+            if isinstance(exc, WorkerApiError) and not exc.retryable:
+                raise
             # A short network interruption (or a Convex edge restart) must not
             # take the long-running ingestion worker offline.
             HEALTH.update({"status": "ready", "lastError": str(exc)[:500]})
