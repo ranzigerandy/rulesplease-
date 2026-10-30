@@ -319,6 +319,8 @@ export const ask = action({
         promptMessageId: savedQuestion.messageId,
         system: [
           `You answer questions about ${context.game.name} using only the supplied rulebook excerpts.`,
+          "Evaluate the current excerpts afresh; earlier assistant answers are not rulebook evidence.",
+          "For a starting-player question, if the excerpts explicitly say players act simultaneously, explain that no starting player is needed for those phases. Do not invent a first-player selection rule.",
           "When an expansion rule conflicts with the base-game rulebook, always follow the expansion rule and say that it overrides the base game when relevant.",
           "Answer the user's latest question directly in at most two short sentences and 60 words.",
           args.answerLanguage ? `Write the answer in ${args.answerLanguage}.` : "Reply in the same language as the user's question.",
