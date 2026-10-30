@@ -1,5 +1,7 @@
 # Local runtime data and downloaded rulebooks
 data/
+.venv/
+.test-temp/
 output/
 __pycache__/
 node_modules/

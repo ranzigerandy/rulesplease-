@@ -5,6 +5,7 @@ export type LibraryRow = {
   status: string;
   statusLabel: string;
   statusMessage: string;
+  lastMessageSnippet?: string | null;
   progress: number;
   game: { bggId: number; name: string; year?: number; rank?: number; average?: number; usersRated?: number; isExpansion?: boolean; thumbnailUrl?: string } | null;
   rulebookSource?: { url: string; label: string; language: string; edition?: string; revision?: string; confidence: string; reviewStatus: string; pageCount?: number; fileSize?: number } | null;

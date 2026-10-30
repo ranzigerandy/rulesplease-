@@ -229,7 +229,7 @@ describe("ingestion worker leases", () => {
     expect(claimed?.manualSource).toEqual({
       url: "https://example.com/imported-rules.pdf",
       label: "My imported rules.pdf",
-      language: "en",
+      language: "und",
       confidence: "user-import",
     });
     expect(claimed?.rejectedSourceUrls).toContain("https://example.com/rejected-rules.pdf");

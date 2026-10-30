@@ -1,4 +1,6 @@
 import { v } from "convex/values";
+import { listUIMessages } from "@convex-dev/agent";
+import { latestChatSnippet } from "../../packages/shared/src/chatSnippet";
 import { mutation, query } from "./_generated/server";
 import { requireUserId } from "./helpers";
 import { rulesAgent } from "./rulesAgent";
@@ -28,6 +30,13 @@ export const list = query({
     return Promise.all(
       rows.filter((libraryGame) => !libraryGame.parentLibraryGameId).map(async (libraryGame) => {
         const game = await ctx.db.get(libraryGame.gameId);
+        const thread = await ctx.db.query("chatThreads")
+          .withIndex("by_user_and_library_game", (q) => q.eq("userId", userId).eq("libraryGameId", libraryGame._id))
+          .order("desc").first();
+        const recentMessages = thread ? await listUIMessages(ctx, rulesAgent.component, {
+          threadId: thread.agentThreadId, paginationOpts: { numItems: 10, cursor: null },
+        }) : null;
+        const lastMessageSnippet = latestChatSnippet(recentMessages?.page ?? []);
         const jobs = await ctx.db
           .query("ingestionJobs")
           .withIndex("by_library_game", (q) =>
@@ -92,6 +101,7 @@ export const list = query({
         }));
         return {
           ...libraryGame,
+          lastMessageSnippet,
           status: isActive ? phase : libraryGame.status,
           statusLabel: isActive
             ? phase

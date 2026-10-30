@@ -16,6 +16,7 @@ import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
+from tempfile import TemporaryDirectory
 
 import app_server
 
@@ -173,11 +174,17 @@ def _preview_metadata(pdf_path, game, candidate):
         "pageCount": page_count,
         "fileSize": pdf_path.stat().st_size,
         "contentType": "application/pdf",
+        "language": app_server.detect_rulebook_language(first_pages),
         "revision": revision_match.group(1) if revision_match else candidate.get("revision"),
     }
 
 
 def process_claim(api, claim):
+    with TemporaryDirectory(prefix="rulesplease-job-") as directory:
+        return _process_claim(api, claim, directory)
+
+
+def _process_claim(api, claim, directory):
     job = claim["job"]
     convex_game = claim["game"]
     bgg_id = int(convex_game["bggId"])
@@ -218,6 +225,7 @@ def process_claim(api, claim):
                     candidate,
                     game,
                     force=True,
+                    directory=directory,
                     require_public_https=bool(manual_source),
                 )
                 metadata = _preview_metadata(candidate_path, game, candidate)
@@ -260,6 +268,8 @@ def process_claim(api, claim):
             )
 
         preview_candidate, preview_path, metadata, candidate_rank = fallback
+        if hashlib.sha256(preview_path.read_bytes()).hexdigest() != metadata["documentHash"]:
+            raise ValueError("Rulebook changed while preparing its preview. Please retry.")
         identity = metadata["identity"]
         preview_storage_id = job.get("sourceStorageId")
         if not preview_storage_id and os.environ.get("RULES_PLEASE_UPLOAD_PDFS") == "1":
@@ -272,7 +282,7 @@ def process_claim(api, claim):
                 "source": {
                     "url": preview_candidate["url"],
                     "label": preview_candidate.get("label", f"{game['name']} rulebook"),
-                    "language": preview_candidate.get("language", "en"),
+                    "language": metadata.get("language", "und"),
                     "edition": identity.get("edition") or preview_candidate.get("edition", "base game"),
                     "revision": metadata.get("revision"),
                     "confidence": identity.get("confidence") or preview_candidate.get("confidence", "auto"),
@@ -305,6 +315,7 @@ def process_claim(api, claim):
             return
         approved_source = {
             **preview_candidate,
+            "documentHash": metadata["documentHash"],
             "edition": identity.get("edition") or preview_candidate.get("edition", "base game"),
             "confidence": identity.get("confidence") or preview_candidate.get("confidence", "auto"),
         }
@@ -328,14 +339,18 @@ def process_claim(api, claim):
             )
             if pdf_path is None:
                 pdf_path = app_server.download_pdf(
-                    candidate,
+                    {**candidate, "url": candidate["downloadUrl"]} if candidate.get("downloadUrl") else candidate,
                     game,
                     force=True,
+                    directory=directory,
                     require_public_https=bool(manual_source),
                     progress=lambda percent, message: _heartbeat(
                         api, job, "downloading_rulebook", percent, message
                     ),
                 )
+            expected_hash = candidate.get("documentHash")
+            if expected_hash and hashlib.sha256(pdf_path.read_bytes()).hexdigest() != expected_hash:
+                raise ValueError("The rulebook changed since its preview was approved. Please select it again.")
             pages = app_server.extract_pages(
                 pdf_path,
                 progress=lambda percent, message: _heartbeat(
@@ -393,7 +408,7 @@ def process_claim(api, claim):
             "source": {
                 "url": selected_source["url"],
                 "label": selected_source.get("label", f"{game['name']} rulebook"),
-                "language": "en",
+                "language": app_server.detect_rulebook_language(pages),
                 "edition": selected_source.get("edition", "base game"),
                 "confidence": selected_source.get("confidence", "auto"),
                 "reviewStatus": "approved",

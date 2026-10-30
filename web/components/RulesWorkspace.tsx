@@ -61,6 +61,7 @@ type LibraryRow = {
   status: string;
   statusLabel: string;
   statusMessage: string;
+  lastMessageSnippet?: string | null;
   progress: number;
   updatedAt?: number;
   archivedAt?: number;
@@ -168,8 +169,10 @@ function WorkspaceContent() {
   useEffect(() => {
     const storedLanguage = window.localStorage.getItem("rulesplease-answer-language");
     const storedCitations = window.localStorage.getItem("rulesplease-show-citations");
-    if (storedLanguage) setAnswerLanguage(storedLanguage);
-    if (storedCitations !== null) setShowCitations(storedCitations === "true");
+    queueMicrotask(() => {
+      if (storedLanguage) setAnswerLanguage(storedLanguage);
+      if (storedCitations !== null) setShowCitations(storedCitations === "true");
+    });
   }, []);
 
   useEffect(() => {
@@ -646,7 +649,7 @@ function RulebookApproval({ game, source, rulebook, previewPdfUrl, approving, re
         <GameCover game={game} />
         <div>
           <strong>{gameName}</strong>
-          <span>{source.language.toUpperCase()}</span>
+          <span>{source.language === "und" ? "Unknown language" : source.language.toUpperCase()}</span>
           <small>{source.label}</small>
         </div>
       </div>
@@ -654,7 +657,7 @@ function RulebookApproval({ game, source, rulebook, previewPdfUrl, approving, re
         <div><dt>Pages</dt><dd>{source.pageCount ?? rulebook?.pageCount ?? "—"}</dd></div>
         <div><dt>File</dt><dd>{formatFileSize(source.fileSize)}</dd></div>
       </dl>
-      <a className="approval-preview" href={source.url} target="_blank" rel="noreferrer">Preview rulebook <ExternalLink /></a>
+      <a className="approval-preview" href={previewPdfUrl ?? source.url} target="_blank" rel="noreferrer">Preview rulebook <ExternalLink /></a>
       <div className="approval-actions">
         <button type="button" className="approval-confirm" disabled={approving || replacing} onClick={onApprove}>
           {approving ? <LoaderCircle className="spin" /> : <ShieldCheck />}
@@ -1313,7 +1316,7 @@ function RecentChatCard({ row, onSelect, onOpenActions }: { row: LibraryRow; onS
         <GameCover game={row.game} />
         <span>
           <strong>{row.game?.name ?? "Unknown game"}</strong>
-          <small>{row.statusMessage}</small>
+          <small>{row.lastMessageSnippet ?? row.statusMessage}</small>
           <em>{row.status === "ready" ? "Ready to chat" : row.statusLabel}</em>
         </span>
       </button>

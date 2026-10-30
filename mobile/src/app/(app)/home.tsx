@@ -16,7 +16,7 @@ export default function HomeScreen() {
     <Text style={styles.sectionTitle}>Recent chats</Text>
     {!library ? <ActivityIndicator color={colors.text} style={styles.loader} /> : library.length === 0 ? <View style={styles.empty}><Text style={styles.emptyTitle}>No games yet</Text><Text style={styles.emptyBody}>Your approved and processing rulebooks will appear here.</Text></View> : library.map((row) => <Pressable key={row._id} onPress={() => router.push(`/game/${row._id}`)} style={styles.card}>
       <GameCover uri={row.game ? thumbnailUrl(row.game.bggId) : undefined} size={62} />
-      <View style={styles.cardCopy}><Text numberOfLines={1} style={styles.gameName}>{row.game?.name ?? "Board game"}</Text><Text numberOfLines={1} style={[styles.status, row.status === "ready" && styles.ready]}>{row.statusLabel}</Text><Text numberOfLines={2} style={styles.message}>{row.statusMessage}</Text></View><ChevronRight color={colors.muted} size={20} />
+      <View style={styles.cardCopy}><Text numberOfLines={1} style={styles.gameName}>{row.game?.name ?? "Board game"}</Text><Text numberOfLines={1} style={[styles.status, row.status === "ready" && styles.ready]}>{row.statusLabel}</Text><Text numberOfLines={2} style={styles.message}>{row.lastMessageSnippet ?? row.statusMessage}</Text></View><ChevronRight color={colors.muted} size={20} />
     </Pressable>)}
   </Screen>;
 }

@@ -13,6 +13,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from datetime import datetime, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -512,6 +513,21 @@ def rules_pdf_path(game):
     return PDF_DIR / f"{safe_file_stem(game.get('name'))} rules.pdf"
 
 
+def detect_rulebook_language(pages):
+    """Detect from document text, never from a URL or discovery label."""
+    from langdetect import DetectorFactory, detect_langs, LangDetectException
+
+    text = "\n".join(page.get("text", "") for page in pages)[:18000]
+    if len(re.findall(r"[^\W\d_]+", text)) < 20:
+        return "und"
+    DetectorFactory.seed = 0
+    try:
+        languages = detect_langs(text)
+    except LangDetectException:
+        return "und"
+    return languages[0].lang if languages and languages[0].prob >= 0.9 else "und"
+
+
 def move_pdf_to_rules_name(game):
     current_path = game.get("pdfPath")
     if not current_path:
@@ -594,11 +610,15 @@ class PublicHttpsRedirectHandler(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def download_pdf(source, game, progress=None, force=False, require_public_https=False):
+def download_pdf(source, game, progress=None, force=False, require_public_https=False, directory=None):
     url = source["url"]
     target = rules_pdf_path(game)
+    if directory is not None:
+        target = Path(directory) / target.name
     if force:
-        target.unlink(missing_ok=True)
+        # Each candidate/lease owns its bytes. A later candidate must never
+        # overwrite a retained fallback's PDF or another worker's download.
+        target = target.with_name(f"{game.get('id', 'game')}-{uuid.uuid4().hex}.pdf")
     if target.exists() and target.stat().st_size > 0:
         return target
 
@@ -629,7 +649,7 @@ def download_pdf(source, game, progress=None, force=False, require_public_https=
                 # direct PDF and retain that final URL for preview links.
                 source["url"] = fallback_urls[0]
                 return download_pdf(
-                    source, game, progress=progress, force=False, require_public_https=require_public_https,
+                    source, game, progress=progress, force=force, require_public_https=require_public_https, directory=directory,
                 )
             if require_public_https:
                 raise ValueError(

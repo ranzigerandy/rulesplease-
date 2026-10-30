@@ -1,4 +1,5 @@
 import os
+import hashlib
 import io
 import unittest
 import urllib.error
@@ -22,6 +23,51 @@ class FakeApi:
 
 
 class ConvexWorkerFlowTests(unittest.TestCase):
+    def test_fallback_preview_keeps_the_selected_candidates_bytes_and_language(self):
+        api = FakeApi()
+        api.prepare_response["needsApproval"] = True
+        uploads = []
+        api.upload_pdf = lambda path: uploads.append(path.read_bytes()) or "storage-test"
+        candidates = [{"url": "https://example.com/a.pdf", "label": "A"}, {"url": "https://example.com/b.pdf", "label": "B"}]
+
+        class Response(io.BytesIO):
+            headers = {"Content-Type": "application/pdf"}
+
+        def metadata(path, *_args):
+            return {"identity": {"approved": False, "reviewRequired": True, "edition": "base game", "confidence": "review_required", "reason": "Review"}, "documentHash": hashlib.sha256(path.read_bytes()).hexdigest(), "pageCount": 1, "fileSize": path.stat().st_size, "contentType": "application/pdf", "language": "de"}
+
+        with (
+            TemporaryDirectory() as directory,
+            patch.dict(os.environ, {"RULES_PLEASE_UPLOAD_PDFS": "1"}),
+            patch.object(convex_worker, "_source_candidates", return_value=iter(candidates)),
+            patch.object(convex_worker, "_preview_metadata", side_effect=metadata),
+            patch.object(convex_worker.app_server, "rules_pdf_path", return_value=Path(directory) / "Kalypso rules.pdf"),
+            patch("urllib.request.urlopen", side_effect=[Response(b"%PDF-A"), Response(b"%PDF-B")]),
+        ):
+            convex_worker.process_claim(api, {"job": {"_id": "job", "leaseToken": "lease"}, "game": {"bggId": 123, "name": "Kalypso"}})
+        source = next(payload["source"] for path, payload in api.calls if path == "/worker/jobs/prepare")
+        self.assertEqual(source["url"], candidates[0]["url"])
+        self.assertEqual(uploads, [b"%PDF-A"])
+        self.assertEqual(source["documentHash"], hashlib.sha256(uploads[0]).hexdigest())
+        self.assertEqual(source["language"], "de")
+
+    def test_changed_approved_pdf_is_not_indexed(self):
+        api = FakeApi()
+        with TemporaryDirectory() as directory:
+            pdf = Path(directory) / "rules.pdf"
+            pdf.write_bytes(b"%PDF-changed")
+            with patch.object(convex_worker.app_server, "download_pdf", return_value=pdf):
+                with self.assertRaisesRegex(ValueError, "changed since"):
+                    convex_worker.process_claim(api, {"job": {"_id": "job", "leaseToken": "lease"}, "game": {"bggId": 123, "name": "Example"}, "approvedSource": {"url": "https://example.com/a.pdf", "documentHash": "previous-hash"}})
+        self.assertFalse(any(path == "/worker/jobs/chunks" for path, _ in api.calls))
+
+    def test_language_is_detected_from_text_not_assumed_english(self):
+        german = "Jeder Spieler erhält zu Beginn des Spiels vier Karten. Der jüngste Spieler beginnt. Danach spielen alle Spieler im Uhrzeigersinn. Das Spiel endet wenn alle Karten aufgebraucht sind. Wer die meisten Punkte gesammelt hat gewinnt das Spiel."
+        english = "Each player receives four cards at the beginning of the game. The youngest player starts and the other players take turns clockwise. The game ends when all cards have been used. The player with the most points wins the game."
+        self.assertEqual(convex_worker.app_server.detect_rulebook_language([{"text": german}]), "de")
+        self.assertEqual(convex_worker.app_server.detect_rulebook_language([{"text": english}]), "en")
+        self.assertEqual(convex_worker.app_server.detect_rulebook_language([{"text": "Kalypso"}]), "und")
+
     def test_transient_convex_limit_error_is_retryable_even_when_mislabeled_unauthorized(self):
         api = convex_worker.WorkerApi.__new__(convex_worker.WorkerApi)
         api.site_url = "https://example.convex.site"
@@ -63,7 +109,7 @@ class ConvexWorkerFlowTests(unittest.TestCase):
                     "confidence": "rejected",
                     "reason": "The title could not be verified.",
                 },
-                "documentHash": "hash-test",
+                "documentHash": hashlib.sha256(pdf_path.read_bytes()).hexdigest(),
                 "pageCount": 12,
                 "fileSize": 123,
                 "contentType": "application/pdf",

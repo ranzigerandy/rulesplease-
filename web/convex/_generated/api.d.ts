@@ -17,6 +17,7 @@ import type * as library from "../library.js";
 import type * as migrations from "../migrations.js";
 import type * as notificationActions from "../notificationActions.js";
 import type * as notifications from "../notifications.js";
+import type * as repairs from "../repairs.js";
 import type * as rulesAgent from "../rulesAgent.js";
 import type * as workers from "../workers.js";
 
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   notificationActions: typeof notificationActions;
   notifications: typeof notifications;
+  repairs: typeof repairs;
   rulesAgent: typeof rulesAgent;
   workers: typeof workers;
 }>;

@@ -78,7 +78,8 @@ export const claim = internalMutation({
       rulebook,
       approvedSource: approvedSource?.reviewStatus === "approved"
         ? {
-            url: uploadedSourceUrl ?? approvedSource.url,
+            url: approvedSource.url,
+            downloadUrl: uploadedSourceUrl ?? (rulebook?.storageId ? await ctx.storage.getUrl(rulebook.storageId) : null),
             label: approvedSource.label,
             language: approvedSource.language,
             edition: approvedSource.edition,
@@ -97,7 +98,7 @@ export const claim = internalMutation({
         ? {
             url: manualSourceUrl,
             label: job.sourceLabel ?? "Imported rulebook PDF",
-            language: "en",
+            language: "und",
             confidence: "user-import",
           }
         : null,
@@ -387,6 +388,9 @@ export const complete = internalMutation({
     if (!job?.rulebookId) throw new Error("Rulebook has not been prepared");
     const rulebook = await ctx.db.get(job.rulebookId);
     const source = rulebook ? await ctx.db.get(rulebook.sourceId) : null;
+    if (rulebook?.documentHash && rulebook.documentHash !== result.documentHash) {
+      throw new Error("Indexed PDF differs from the approved preview");
+    }
     const now = Date.now();
     const awaitingApproval = !rulebook || source?.reviewStatus !== "approved";
     await ctx.db.patch(job.rulebookId, {
