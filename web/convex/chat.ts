@@ -40,6 +40,14 @@ const NO_ANSWER = "NO_ANSWER";
 const NO_ANSWER_MESSAGE =
   "The indexed rulebook does not contain enough information to answer that question.";
 
+export function retrievalQuestion(question: string) {
+  // A game may have simultaneous phases instead of a designated first player.
+  // Search both possibilities; the answer must still be supported by the PDF.
+  return /\b(start(?:ing)? player|first player|turn order|startspeler|beurtvolgorde|wie begint)\b/i.test(question)
+    ? `${question}\nWho acts first? Turn order and phases: do players take turns or play simultaneously, all players acting at the same time?`
+    : question;
+}
+
 export function answerIsUnsupported(answer: string) {
   return /^NO_ANSWER[.!]?$/i.test(answer.trim());
 }
@@ -262,7 +270,7 @@ export const ask = action({
       model: openai.embedding(
         env.OPENAI_EMBEDDING_MODEL ?? "text-embedding-3-small",
       ),
-      value: question,
+      value: retrievalQuestion(question),
     });
     const rulebookSearches = [
       ...context.expansions.map((expansion) => ({ rulebookId: expansion.rulebook._id, limit: 4 })),

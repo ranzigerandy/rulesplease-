@@ -2,7 +2,7 @@
 
 import { describe, expect, test } from "vitest";
 import type { Doc, Id } from "./_generated/dataModel";
-import { answerIsUnsupported, selectMinimalEvidence } from "./chat";
+import { answerIsUnsupported, selectMinimalEvidence, retrievalQuestion } from "./chat";
 
 function chunk(page: number, text: string, suffix: string): Doc<"rulebookChunks"> {
   return {
@@ -18,6 +18,11 @@ function chunk(page: number, text: string, suffix: string): Doc<"rulebookChunks"
 }
 
 describe("minimal rulebook evidence", () => {
+  test("starting-player searches include simultaneous play without assuming an answer", () => {
+    expect(retrievalQuestion("Who is start player")).toContain("play simultaneously");
+    expect(retrievalQuestion("Wie begint?")).toContain("take turns");
+    expect(retrievalQuestion("When does the game end?")).toBe("When does the game end?");
+  });
   test("recognizes the no-answer marker so no source is saved", () => {
     expect(answerIsUnsupported("NO_ANSWER")).toBe(true);
     expect(answerIsUnsupported("no_answer.")).toBe(true);
