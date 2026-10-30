@@ -2,9 +2,22 @@
 import agentTest from "@convex-dev/agent/test";
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { rulesAgent } from "./rulesAgent";
+
+test("turn-order retrieval finds explicit simultaneous play missed by vector hits", async () => {
+  const t = convexTest(schema, import.meta.glob("./**/*.ts"));
+  const ids = await t.run(async (ctx) => {
+    const gameId = await ctx.db.insert("games", { bggId: 1, name: "Example", isExpansion: false, createdAt: 1, updatedAt: 1 });
+    const sourceId = await ctx.db.insert("rulebookSources", { gameId, url: "https://example.com/rules.pdf", label: "Example", language: "de", confidence: "test", reviewStatus: "approved", legalStatus: "unknown", discoveredAt: 1 });
+    const rulebookId = await ctx.db.insert("rulebooks", { gameId, sourceId, status: "ready", pageCount: 7, chunkCount: 1, extractedChars: 100, createdAt: 1, updatedAt: 1 });
+    const chunkId = await ctx.db.insert("rulebookChunks", { rulebookId, page: 7, text: "Spielablauf: In jeder Runde spielt ihr gleichzeitig.", sourceUrl: "https://example.com/rules.pdf", sourceLabel: "Example", checksum: "timing" });
+    return { rulebookId, chunkId };
+  });
+  const evidence = await t.query(internal.chatInternal.chunksById, { ids: [], turnOrderRulebookIds: [ids.rulebookId] });
+  expect(evidence.map((chunk) => chunk._id)).toEqual([ids.chunkId]);
+});
 
 test("library snippets read existing history and react to new questions and answers", async () => {
   const t = convexTest(schema, import.meta.glob("./**/*.ts"));

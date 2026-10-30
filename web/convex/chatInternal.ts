@@ -1,6 +1,11 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 
+export function simultaneousPlayScore(text: string) {
+  if (!/simultan|gleichzeitig|tegelijkertijd|gelijktijdig|al mismo tiempo/i.test(text)) return 0;
+  return /spielablauf|gameplay|spelverloop|each round|jeder runde|chaque manche/i.test(text) ? 2 : 1;
+}
+
 export const authorizedContext = internalQuery({
   args: {
     userId: v.string(),
@@ -53,11 +58,23 @@ export const authorizedContext = internalQuery({
 });
 
 export const chunksById = internalQuery({
-  args: { ids: v.array(v.id("rulebookChunks")) },
+  args: { ids: v.array(v.id("rulebookChunks")), turnOrderRulebookIds: v.optional(v.array(v.id("rulebooks"))) },
   returns: v.array(v.any()),
-  handler: async (ctx, { ids }) => {
+  handler: async (ctx, { ids, turnOrderRulebookIds }) => {
     const chunks = await Promise.all(ids.map((id) => ctx.db.get(id)));
-    return chunks.filter((chunk) => chunk !== null);
+    const explicitTiming = [];
+    for (const rulebookId of (turnOrderRulebookIds ?? []).slice(0, 4)) {
+      const candidates = await ctx.db.query("rulebookChunks")
+        .withIndex("by_rulebook_and_page", (q) => q.eq("rulebookId", rulebookId)).take(160);
+      explicitTiming.push(...candidates.filter((c) => simultaneousPlayScore(c.text) > 0)
+        .sort((a, b) => simultaneousPlayScore(b.text) - simultaneousPlayScore(a.text)).slice(0, 2));
+    }
+    const seen = new Set();
+    return [...explicitTiming, ...chunks].filter((chunk): chunk is NonNullable<typeof chunk> => {
+      if (!chunk || seen.has(chunk._id)) return false;
+      seen.add(chunk._id);
+      return true;
+    });
   },
 });
 

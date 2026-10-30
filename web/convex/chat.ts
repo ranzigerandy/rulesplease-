@@ -48,6 +48,7 @@ export function retrievalQuestion(question: string) {
     : question;
 }
 
+
 export function answerIsUnsupported(answer: string) {
   return /^NO_ANSWER[.!]?$/i.test(answer.trim());
 }
@@ -284,6 +285,7 @@ export const ask = action({
     const matches = matchGroups.flat();
     const chunks = (await ctx.runQuery(internal.chatInternal.chunksById, {
       ids: matches.map((match) => match._id),
+      ...(retrievalQuestion(question) !== question ? { turnOrderRulebookIds: rulebookSearches.map((source) => source.rulebookId) } : {}),
     })) as Doc<"rulebookChunks">[];
 
     const savedQuestion = await rulesAgent.saveMessage(ctx, {

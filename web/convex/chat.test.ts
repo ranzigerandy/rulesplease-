@@ -3,6 +3,7 @@
 import { describe, expect, test } from "vitest";
 import type { Doc, Id } from "./_generated/dataModel";
 import { answerIsUnsupported, selectMinimalEvidence, retrievalQuestion } from "./chat";
+import { simultaneousPlayScore } from "./chatInternal";
 
 function chunk(page: number, text: string, suffix: string): Doc<"rulebookChunks"> {
   return {
@@ -22,6 +23,10 @@ describe("minimal rulebook evidence", () => {
     expect(retrievalQuestion("Who is start player")).toContain("play simultaneously");
     expect(retrievalQuestion("Wie begint?")).toContain("take turns");
     expect(retrievalQuestion("When does the game end?")).toBe("When does the game end?");
+  });
+  test("explicit simultaneous gameplay outranks simultaneous setup", () => {
+    expect(simultaneousPlayScore("Spielablauf: In jeder Runde spielt ihr gleichzeitig.")).toBeGreaterThan(simultaneousPlayScore("Set up the cards simultaneously."));
+    expect(simultaneousPlayScore("Players take turns clockwise.")).toBe(0);
   });
   test("recognizes the no-answer marker so no source is saved", () => {
     expect(answerIsUnsupported("NO_ANSWER")).toBe(true);
