@@ -12,11 +12,11 @@ import Image from "next/image";
 import { GameCover } from "./GameCover";
 import { TeachingFrame, TeachingHeader } from "./TeachingChrome";
 import { useState } from "react";
+import { api } from "@/convex/_generated/api";
 import {
-  api,
   teachingLibraryGames,
   type TeachingLibraryGame,
-} from "@rulesplease/shared";
+} from "../../packages/shared/src/teachingLibrary";
 import { Input } from "@/components/ui/input";
 import "./teaching.css";
 

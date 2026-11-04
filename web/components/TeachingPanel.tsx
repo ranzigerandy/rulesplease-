@@ -43,17 +43,19 @@ import {
   TEACHING_PHASES,
   teachingLanguage,
   teachingFailure,
-  teachingAids,
-  TURN_WALKTHROUGH_STEPS,
-  type TurnWalkthrough,
   type TeachingCard,
   type TeachingLesson,
   type TeachingMessage,
   type TeachingSetup,
   type TeachingSource,
   type TeachingView,
-  type TeachingLibraryGame,
-} from "@rulesplease/shared";
+} from "../../packages/shared/src/teaching";
+import {
+  teachingAids,
+  TURN_WALKTHROUGH_STEPS,
+  type TurnWalkthrough,
+} from "../../packages/shared/src/teachingAids";
+import type { TeachingLibraryGame } from "../../packages/shared/src/teachingLibrary";
 import { Button } from "@/components/ui/button";
 import {
   RulebookViewer,
