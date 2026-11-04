@@ -11,6 +11,11 @@ export default clerkMiddleware(
       destination.pathname = "/product";
       return NextResponse.rewrite(destination);
     }
+    if (hostname === "app.rulesplease.com" && (request.nextUrl.pathname === "/learn" || request.nextUrl.pathname.startsWith("/learn/"))) {
+      const destination = request.nextUrl.clone();
+      destination.pathname = `/product${request.nextUrl.pathname}`;
+      return NextResponse.rewrite(destination);
+    }
   },
   proxyUrl ? { frontendApiProxy: { enabled: true } } : {},
 );

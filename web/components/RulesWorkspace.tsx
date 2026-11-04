@@ -1,5 +1,6 @@
 "use client";
 
+import { GameCover, GameMonogram } from "@/components/GameCover";
 import { MessageResponse } from "@/components/ai-elements/message";
 import { RulebookViewer, type RulebookViewerSource } from "@/components/RulebookViewer";
 import { SignInButton, useUser } from "@clerk/nextjs";
@@ -10,6 +11,8 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Authenticated, AuthLoading, Unauthenticated, useAction, useMutation, useQuery } from "convex/react";
 import Image from "next/image";
+import Link from "next/link";
+import "./teaching.css";
 import {
   ArrowLeft,
   ArrowRight,
@@ -119,7 +122,7 @@ type CitationRecord = {
   excerpt?: string;
 };
 
-export function RulesWorkspace() {
+export function RulesWorkspace({ initialGameId }: { initialGameId?: string } = {}) {
   return (
     <>
       <AuthLoading><WorkspaceAuthNotice message="Connecting your secure library…" /></AuthLoading>
@@ -128,14 +131,17 @@ export function RulesWorkspace() {
           <SignInButton mode="redirect"><Button>Sign in</Button></SignInButton>
         </WorkspaceAuthNotice>
       </Unauthenticated>
-      <Authenticated><WorkspaceContent /></Authenticated>
+      <Authenticated><WorkspaceContent initialGameId={initialGameId} /></Authenticated>
     </>
   );
 }
 
-function WorkspaceContent() {
+function WorkspaceContent({ initialGameId }: { initialGameId?: string }) {
   const { user } = useUser();
   const library = useQuery(api.library.list) as LibraryRow[] | undefined;
+  const teachingEnabled = useQuery(api.teaching.availability);
+  const aiConsent = useQuery(api.compliance.getAiConsent);
+  const acceptAiConsent = useMutation(api.compliance.acceptAiConsent);
   const addGame = useMutation(api.library.add);
   const addExpansions = useMutation(api.library.addExpansions);
   const removeExpansion = useMutation(api.library.removeExpansion);
@@ -151,7 +157,7 @@ function WorkspaceContent() {
   const sendGeneralFeedback = useAction(api.feedback.sendGeneralFeedback);
   const reportCitationByEmail = useAction(api.feedback.reportCitation);
   const [view, setView] = useState<AppView>("home");
-  const [selectedId, setSelectedId] = useState<Id<"libraryGames"> | null>(null);
+  const [selectedId, setSelectedId] = useState<Id<"libraryGames"> | null>(initialGameId as Id<"libraryGames"> ?? null);
   const [chatThreadId, setChatThreadId] = useState<Id<"chatThreads"> | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<GameSearchResult[]>([]);
@@ -163,17 +169,8 @@ function WorkspaceContent() {
   const [replacingRulebook, setReplacingRulebook] = useState(false);
   const [approvingRulebook, setApprovingRulebook] = useState(false);
   const [approvingExpansionId, setApprovingExpansionId] = useState<Id<"libraryGames"> | null>(null);
-  const [answerLanguage, setAnswerLanguage] = useState("Auto");
-  const [showCitations, setShowCitations] = useState(true);
-
-  useEffect(() => {
-    const storedLanguage = window.localStorage.getItem("rulesplease-answer-language");
-    const storedCitations = window.localStorage.getItem("rulesplease-show-citations");
-    queueMicrotask(() => {
-      if (storedLanguage) setAnswerLanguage(storedLanguage);
-      if (storedCitations !== null) setShowCitations(storedCitations === "true");
-    });
-  }, []);
+  const [answerLanguage, setAnswerLanguage] = useState(() => typeof window === "undefined" ? "Auto" : window.localStorage.getItem("rulesplease-answer-language") ?? "Auto");
+  const [showCitations, setShowCitations] = useState(() => typeof window === "undefined" ? true : window.localStorage.getItem("rulesplease-show-citations") !== "false");
 
   useEffect(() => {
     window.localStorage.setItem("rulesplease-answer-language", answerLanguage);
@@ -377,6 +374,12 @@ function WorkspaceContent() {
     .filter((row) => !row.archivedAt)
     .sort((left, right) => (right.updatedAt ?? 0) - (left.updatedAt ?? 0));
   const archivedCount = rows.filter((row) => Boolean(row.archivedAt)).length;
+  if (aiConsent === undefined) {
+    return <WorkspaceAuthNotice message="Checking your privacy choices…" />;
+  }
+  if (!aiConsent.granted) {
+    return <AiConsentPanel policyVersion={aiConsent.policyVersion} onAccept={() => acceptAiConsent({})} />;
+  }
   return (
     <>
       <Toaster theme="light" />
@@ -401,6 +404,7 @@ function WorkspaceContent() {
             ))}
           </div>
 
+          {teachingEnabled && <Link className="teach-entry teach-library-entry" href="/product/learn"><BookOpenText />Explain this game</Link>}
           <Button className="rail-new-chat" onClick={() => openView("new-chat")}><Plus /> New chat</Button>
         </aside>
 
@@ -414,9 +418,12 @@ function WorkspaceContent() {
                   <h1>{selected.game?.name}</h1>
                   {selected.reusedSharedRulebook && <span><LibraryBig />Shared rulebook</span>}
                 </div>
-                {selected.rulebookSource ? (
-                  <button className="round-action chat-info" aria-label="About this rulebook" onClick={() => setShowRulebookInfo(true)}><Info /></button>
-                ) : <span className="chat-header-spacer" aria-hidden="true" />}
+                <div className="chat-header-actions">
+                  {teachingEnabled && <Link className="round-action" href={`/product/learn/${selected._id}`} aria-label="Teach me this game" title="Teach me this game"><BookOpenText /></Link>}
+                  {selected.rulebookSource ? (
+                    <button className="round-action chat-info" aria-label="About this rulebook" onClick={() => setShowRulebookInfo(true)}><Info /></button>
+                  ) : <span className="chat-header-spacer" aria-hidden="true" />}
+                </div>
               </header>
               {selected.status === "review_required" ? (
                 selected.rulebookSource ? (
@@ -447,6 +454,7 @@ function WorkspaceContent() {
                 />
               ) : selected.status !== "ready" ? <ProcessingPanel game={selected} /> : (
                 <ChatPanel
+                  teachHref={teachingEnabled ? `/product/learn/${selected._id}` : undefined}
                   gameName={selected.game?.name ?? "this game"}
                   messages={messagesResult?.page ?? []}
                   citations={citations ?? []}
@@ -522,6 +530,7 @@ function WorkspaceContent() {
             />
           ) : view === "settings" ? (
             <SettingsWorkspace
+              liveAccount
               email={user?.primaryEmailAddress?.emailAddress ?? "Signed in"}
               count={activeRows.length}
               archivedCount={archivedCount}
@@ -547,6 +556,7 @@ function WorkspaceContent() {
           ) : (
             <HomeWorkspace
               library={activeRows}
+              teachHref={teachingEnabled ? "/product/learn" : undefined}
               onAdd={() => openView("new-chat")}
               onRulebooks={() => openView("rulebooks")}
               onSettings={() => openView("settings")}
@@ -934,7 +944,7 @@ function CitationPassage({ quote, answer }: { quote: string; answer: string }) {
   return <blockquote>{before}{highlight && <strong>{highlight}</strong>}{after}</blockquote>;
 }
 
-function ChatPanel({ gameName, messages, citations, question, setQuestion, asking, submit, showCitations, onReportCitation }: { gameName: string; messages: ChatMessage[]; citations: CitationRecord[]; question: string; setQuestion: (value: string) => void; asking: boolean; submit: () => Promise<void>; showCitations: boolean; onReportCitation: (report: { agentMessageId: string; question: string; answer: string; citations: CitationRecord[] }) => Promise<void> }) {
+function ChatPanel({ gameName, messages, citations, question, setQuestion, asking, submit, showCitations, onReportCitation, teachHref }: { teachHref?: string; gameName: string; messages: ChatMessage[]; citations: CitationRecord[]; question: string; setQuestion: (value: string) => void; asking: boolean; submit: () => Promise<void>; showCitations: boolean; onReportCitation: (report: { agentMessageId: string; question: string; answer: string; citations: CitationRecord[] }) => Promise<void> }) {
   const [expandedCitationMessageId, setExpandedCitationMessageId] = useState<string | null>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
   const messageStreamRef = useRef<HTMLDivElement>(null);
@@ -1019,6 +1029,7 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
             <Image className="chat-empty-mascot" src="/rulesplease-mascot-thinking.png" alt="" width={88} height={88} priority />
             <h2>Ask about {gameName}</h2>
             <p>Setup, turn order, edge cases, scoring, or tiebreakers.</p>
+            {teachHref && <Link className="teach-entry" href={teachHref}><BookOpenText />Teach me this game</Link>}
           </div>
         ) : messages.map((message, messageIndex) => {
           const role = message.role ?? "assistant";
@@ -1148,28 +1159,6 @@ function ProcessingPanel({ game }: { game: LibraryRow }) {
   );
 }
 
-function GameMonogram({ name }: { name: string }) {
-  const letters = name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
-  return <span className="game-monogram" aria-hidden="true">{letters}</span>;
-}
-
-function GameCover({ game }: { game: LibraryRow["game"] }) {
-  const [failed, setFailed] = useState(false);
-  if (!game || failed) return <GameMonogram name={game?.name ?? "?"} />;
-  return (
-    <span className="game-cover">
-      <Image
-        src={game.thumbnailUrl ?? `/api/catalog/thumbnail/${game.bggId}?v=2`}
-        alt={`${game.name} cover`}
-        width={80}
-        height={100}
-        unoptimized
-        onError={() => setFailed(true)}
-      />
-    </span>
-  );
-}
-
 function SearchResultCover({ game }: { game: GameSearchResult }) {
   const [failed, setFailed] = useState(false);
   if (failed) return <GameMonogram name={game.name} />;
@@ -1180,7 +1169,7 @@ function SearchResultCover({ game }: { game: GameSearchResult }) {
   );
 }
 
-function HomeWorkspace({ library, onAdd, onRulebooks, onSettings, onSelect, onArchive }: { library: LibraryRow[]; onAdd: () => void; onRulebooks: () => void; onSettings: () => void; onSelect: (id: Id<"libraryGames">) => void; onArchive: (id: Id<"libraryGames">) => Promise<void> }) {
+function HomeWorkspace({ library, teachHref, onAdd, onRulebooks, onSettings, onSelect, onArchive }: { library: LibraryRow[]; teachHref?: string; onAdd: () => void; onRulebooks: () => void; onSettings: () => void; onSelect: (id: Id<"libraryGames">) => void; onArchive: (id: Id<"libraryGames">) => Promise<void> }) {
   const [filter, setFilter] = useState("");
   const [archiveTarget, setArchiveTarget] = useState<LibraryRow | null>(null);
   const filtered = library.filter((row) => row.game?.name.toLowerCase().includes(filter.toLowerCase()));
@@ -1193,6 +1182,7 @@ function HomeWorkspace({ library, onAdd, onRulebooks, onSettings, onSelect, onAr
       <div className="home-actions">
         <label className="chat-search"><Search /><input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Search chats…" /></label>
       </div>
+      {teachHref && <Link className="home-rulebooks-link" href={teachHref}><BookOpenText /><span><strong>Explain this game</strong></span><ChevronRight /></Link>}
       <button className="home-rulebooks-link" onClick={onRulebooks}><BookOpenText /><span><strong>Rulebooks</strong></span><ChevronRight /></button>
       <section className="recent-chats">
         <h2>Recent chats</h2>
@@ -1473,7 +1463,7 @@ function RulebookImportSheet({ game, onClose, onImport }: { game: GameSearchResu
   );
 }
 
-function SettingsWorkspace({ email, count, archivedCount, archivedChats, onBack, userName, profileImageUrl, answerLanguage, onAnswerLanguageChange, showCitations, onShowCitationsChange, onRestoreChat, onSendFeedback }: { email: string; count: number; archivedCount: number; archivedChats: LibraryRow[]; onBack: () => void; userName: string; profileImageUrl?: string; answerLanguage: string; onAnswerLanguageChange: (language: string) => void; showCitations: boolean; onShowCitationsChange: (value: boolean) => void; onRestoreChat: (libraryGameId: Id<"libraryGames">) => Promise<void>; onSendFeedback: (message: string) => Promise<void> }) {
+function SettingsWorkspace({ email, count, archivedCount, archivedChats, onBack, userName, profileImageUrl, answerLanguage, onAnswerLanguageChange, showCitations, onShowCitationsChange, onRestoreChat, onSendFeedback, liveAccount = false }: { email: string; count: number; archivedCount: number; archivedChats: LibraryRow[]; onBack: () => void; userName: string; profileImageUrl?: string; answerLanguage: string; onAnswerLanguageChange: (language: string) => void; showCitations: boolean; onShowCitationsChange: (value: boolean) => void; onRestoreChat: (libraryGameId: Id<"libraryGames">) => Promise<void>; onSendFeedback: (message: string) => Promise<void>; liveAccount?: boolean }) {
   const [showAbout, setShowAbout] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [showArchivedChats, setShowArchivedChats] = useState(false);
@@ -1529,8 +1519,13 @@ function SettingsWorkspace({ email, count, archivedCount, archivedChats, onBack,
           <div>
             <button type="button" onClick={() => setShowAbout(true)}><span>About Rules Please!</span><em><ChevronRight /></em></button>
             <button type="button" onClick={() => setShowFeedback(true)}><span>Leave feedback</span><em><ChevronRight /></em></button>
+            <a href="/support" target="_blank"><span>Support</span><em><ExternalLink /></em></a>
+            <a href="/privacy" target="_blank"><span>Privacy policy</span><em><ExternalLink /></em></a>
+            <a href="/terms" target="_blank"><span>Terms</span><em><ExternalLink /></em></a>
+            <a href="/copyright" target="_blank"><span>Copyright & takedowns</span><em><ExternalLink /></em></a>
           </div>
         </section>
+        {liveAccount && <AccountPrivacyControls />}
       </div>
       {showAbout && <div className="settings-dialog-backdrop" role="presentation" onMouseDown={() => setShowAbout(false)}><section className="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="about-rulesplease-title" onMouseDown={(event) => event.stopPropagation()}><h2 id="about-rulesplease-title">Rules Please!</h2><p>Clear answers to board-game rules, backed by the rulebook you added.</p><button type="button" onClick={() => setShowAbout(false)}>Done</button></section></div>}
       {showLanguagePicker && <div className="settings-dialog-backdrop settings-sheet-backdrop" role="presentation" onMouseDown={() => setShowLanguagePicker(false)}><section className="settings-language-sheet" role="dialog" aria-modal="true" aria-labelledby="answer-language-title" onMouseDown={(event) => event.stopPropagation()}><header><h2 id="answer-language-title">Answer language</h2><button type="button" aria-label="Close language picker" onClick={() => setShowLanguagePicker(false)}><X /></button></header><p>Choose the language for new answers.</p><div>{languages.map((language) => <button type="button" key={language} className={answerLanguage === language ? "selected" : ""} onClick={() => { onAnswerLanguageChange(language); setShowLanguagePicker(false); }}><span>{language}</span>{answerLanguage === language && <Check aria-label="Selected" />}</button>)}</div></section></div>}
@@ -1578,6 +1573,42 @@ function RulebooksWorkspace({ library, onBack, onSelect }: { library: LibraryRow
         {normalizedQuery && visibleLibrary.length === 0 ? <p className="rulebooks-empty">No games found for “{query.trim()}”.</p> : null}
       </div>
     </div>
+  );
+}
+
+function AccountPrivacyControls() {
+  const consent = useQuery(api.compliance.getAiConsent);
+  const revokeConsent = useMutation(api.compliance.revokeAiConsent);
+  return (
+    <section className="settings-section">
+      <h2>Privacy controls</h2>
+      <div>
+        <button type="button" disabled={!consent?.granted} onClick={() => void revokeConsent({}).catch(() => toast.error("AI consent could not be withdrawn"))}>
+          <span>Withdraw AI consent</span><em>{consent?.granted ? "Enabled" : "Withdrawn"}</em>
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function AiConsentPanel({ policyVersion, onAccept }: { policyVersion: string; onAccept: () => Promise<unknown> }) {
+  const [accepting, setAccepting] = useState(false);
+  return (
+    <main className="consent-page">
+      <section className="consent-card" aria-labelledby="ai-consent-title">
+        <span className="consent-icon"><ShieldCheck aria-hidden="true" /></span>
+        <div><small>PRIVACY CHOICE</small><h1 id="ai-consent-title">Use AI to explain your rulebooks?</h1></div>
+        <p>Rules Please sends your questions and relevant rulebook pages through our services so OpenAI can prepare an answer. Convex stores app data, Railway processes rulebooks, and Expo delivers notifications only when you enable them.</p>
+        <ul>
+          <li>AI answers can be wrong. Always check the citations and original rulebook page.</li>
+          <li>You can withdraw consent in Settings. Your account and existing library remain available, but new uploads and AI questions stop until you consent again.</li>
+          <li>We do not use this consent for advertising or tracking.</li>
+        </ul>
+        <div className="consent-links"><a href="/privacy" target="_blank">Privacy policy <ExternalLink /></a><a href="/terms" target="_blank">Terms <ExternalLink /></a></div>
+        <Button disabled={accepting} onClick={async () => { setAccepting(true); try { await onAccept(); } finally { setAccepting(false); } }}>{accepting ? <LoaderCircle className="spin" /> : <Check />}{accepting ? "Saving…" : "I agree and continue"}</Button>
+        <small className="consent-version">Consent policy {policyVersion}</small>
+      </section>
+    </main>
   );
 }
 

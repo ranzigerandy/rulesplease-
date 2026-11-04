@@ -145,6 +145,8 @@ export const getOrCreateThread = mutation({
   returns: v.id("chatThreads"),
   handler: async (ctx, { libraryGameId }) => {
     const userId = await requireUserId(ctx);
+    const hasConsent = await ctx.runQuery(internal.compliance.hasAiConsent, { userId });
+    if (!hasConsent) throw new Error("Accept AI data processing before asking a question.");
     const libraryGame = await ctx.db.get(libraryGameId);
     if (!libraryGame || libraryGame.userId !== userId) {
       throw new Error("Library game not found");
@@ -255,6 +257,8 @@ export const ask = action({
   }),
   handler: async (ctx, args): Promise<ChatAnswer> => {
     const userId = await requireUserId(ctx);
+    const hasConsent = await ctx.runQuery(internal.compliance.hasAiConsent, { userId });
+    if (!hasConsent) throw new Error("Accept AI data processing before asking a question.");
     const question = args.question.trim();
     if (!question || question.length > 2000) throw new Error("Invalid question");
     if (args.answerLanguage && args.answerLanguage.length > 40) throw new Error("Invalid answer language");
@@ -325,6 +329,7 @@ export const ask = action({
           "Answer the user's latest question directly in at most two short sentences and 60 words.",
           args.answerLanguage ? `Write the answer in ${args.answerLanguage}.` : "Reply in the same language as the user's question.",
           "Do not repeat the question, add headings, show your reasoning, reproduce the excerpts, or mention excerpt numbers.",
+          "Do not generate sexual content, hateful content, instructions for wrongdoing, self-harm guidance, or requests for personal data. Refuse briefly if asked.",
           `If the excerpts do not support the answer, respond with exactly ${NO_ANSWER}. Do not add rules from memory.`,
           `Rulebook excerpts:\n${excerpts}`,
         ].join("\n\n"),

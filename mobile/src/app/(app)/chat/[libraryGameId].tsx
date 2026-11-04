@@ -1,7 +1,7 @@
 import { api, type Id } from "@rulesplease/shared";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { Send } from "lucide-react-native";
+import { BookOpen, Send } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,6 +16,7 @@ export default function ChatScreen() {
   const { libraryGameId } = useLocalSearchParams<{ libraryGameId: string }>();
   const id = libraryGameId as Id<"libraryGames">;
   const library = useQuery(api.library.list) as LibraryRow[] | undefined;
+  const teachingEnabled = useQuery(api.teaching.availability);
   const row = library?.find((item) => item._id === id);
   const existingThread = useQuery(api.chat.getThreadForGame, { libraryGameId: id }) as { _id: Id<"chatThreads"> } | null | undefined;
   const createThread = useMutation(api.chat.getOrCreateThread);
@@ -47,8 +48,8 @@ export default function ChatScreen() {
   }
 
   return <SafeAreaView style={styles.safe} edges={["top", "bottom"]}><KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={0}><View style={styles.content}>
-    <Header title={row?.game?.name ?? "Rules chat"} coverUrl={row?.game ? thumbnailUrl(row.game.bggId) : undefined} />
-    <FlatList ref={listRef} data={messages} keyExtractor={(item) => item.id} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.messages} onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })} ListEmptyComponent={<View style={styles.welcome}><Text style={styles.welcomeTitle}>Ask anything about the rules.</Text><Text style={styles.welcomeBody}>Every answer is grounded in this rulebook and includes the exact source passage.</Text></View>} renderItem={({ item }) => {
+    <Header title={row?.game?.name ?? "Rules chat"} coverUrl={row?.game ? thumbnailUrl(row.game.bggId) : undefined} right={teachingEnabled ? <Pressable accessibilityRole="button" accessibilityLabel="Teach me this game" onPress={() => router.push(`/learn/${id}`)} style={{ minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center" }}><BookOpen size={23} color={colors.text} /></Pressable> : undefined} />
+    <FlatList ref={listRef} data={messages} keyExtractor={(item) => item.id} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.messages} onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })} ListEmptyComponent={<View style={styles.welcome}><Text style={styles.welcomeTitle}>Ask anything about the rules.</Text><Text style={styles.welcomeBody}>Every answer is grounded in this rulebook and includes the exact source passage.</Text>{teachingEnabled && <Pressable accessibilityRole="button" onPress={() => router.push(`/learn/${id}`)} style={{ minHeight: 52, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 18, borderWidth: 1, borderColor: colors.border, borderRadius: 30, marginTop: 24 }}><BookOpen size={20} color={colors.text} /><Text style={{ color: colors.text, fontWeight: "700" }}>Teach me this game</Text></Pressable>}</View>} renderItem={({ item }) => {
       const text = messageText(item); if (!text || item.role === "system") return null;
       const sources = citationMap.get(item.id) ?? [];
       return <View style={[styles.messageBlock, item.role === "user" && styles.userBlock]}><View style={item.role === "user" ? styles.userBubble : undefined}><Text style={styles.messageText}>{text}</Text></View>{item.role === "assistant" ? <SourceCard citations={sources} answer={text} /> : null}</View>;

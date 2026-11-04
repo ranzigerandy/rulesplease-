@@ -2,7 +2,8 @@ import { RulesWorkspace } from "@/components/RulesWorkspace";
 import { Button } from "@/components/ui/button";
 import { DatabaseZap } from "lucide-react";
 
-export default function ProductPage() {
+export default async function ProductPage({ searchParams }: { searchParams?: Promise<{ game?: string }> }) {
+  const { game } = await (searchParams ?? Promise.resolve({ game: undefined }));
   const backend = process.env.NEXT_PUBLIC_RULES_BACKEND ?? "convex";
   if (backend === "local") {
     const legacyUrl = process.env.NEXT_PUBLIC_LEGACY_API_URL ?? "http://localhost:4173";
@@ -24,5 +25,5 @@ export default function ProductPage() {
       </main>
     );
   }
-  return <RulesWorkspace />;
+  return <RulesWorkspace initialGameId={game} />;
 }

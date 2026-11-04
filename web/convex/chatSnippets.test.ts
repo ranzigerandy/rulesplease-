@@ -29,6 +29,7 @@ test("library snippets read existing history and react to new questions and answ
     return ctx.db.insert("libraryGames", { gameId, userId, status: "ready", statusLabel: "Ready", statusMessage: "Indexed", progress: 100, addedAt: 1, updatedAt: 1 });
   });
   expect((await client.query(api.library.list))[0].lastMessageSnippet).toBeNull();
+  await client.mutation(api.compliance.acceptAiConsent, {});
   const threadId = await client.mutation(api.chat.getOrCreateThread, { libraryGameId });
   async function save(role: "user" | "assistant", content: string) {
     await t.run(async (ctx) => {

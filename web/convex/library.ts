@@ -1,9 +1,25 @@
 import { v } from "convex/values";
 import { listUIMessages } from "@convex-dev/agent";
 import { latestChatSnippet } from "../../packages/shared/src/chatSnippet";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { requireUserId } from "./helpers";
 import { rulesAgent } from "./rulesAgent";
+import { assertGameAllowed } from "./contentSafety";
+
+function rulebookIsAccessible(rulebook: { visibility?: "private" | "shared"; ownerUserId?: string }, userId: string) {
+  return rulebook.visibility !== "private" || rulebook.ownerUserId === userId;
+}
+
+async function requireAiConsent(ctx: MutationCtx, userId: string) {
+  const consent = await ctx.db
+    .query("userConsents")
+    .withIndex("by_user_id", (q) => q.eq("userId", userId))
+    .order("desc")
+    .first();
+  if (!consent || consent.revokedAt || consent.policyVersion !== "2026-08-28") {
+    throw new Error("Accept AI data processing before using rulebook search, uploads, or chat.");
+  }
+}
 
 const gameInput = v.object({
   bggId: v.number(),
@@ -56,7 +72,7 @@ export const list = query({
         const readyRulebook = boundRulebook
           ? boundRulebook.status === "ready" ? boundRulebook : null
           : rulebooks.find(
-              (rulebook) => rulebook.status === "ready" && rulebook.globalStatus !== "reported" && rulebook.globalStatus !== "deprecated",
+              (rulebook) => rulebook.status === "ready" && rulebook.globalStatus !== "reported" && rulebook.globalStatus !== "deprecated" && rulebookIsAccessible(rulebook, userId),
             ) ?? null;
         const reviewRulebook = boundRulebook
           ? boundRulebook.status === "review_required" ? boundRulebook : null
@@ -146,6 +162,8 @@ export const add = mutation({
   returns: v.id("libraryGames"),
   handler: async (ctx, { game: input }) => {
     const userId = await requireUserId(ctx);
+    await requireAiConsent(ctx, userId);
+    const contentRating = assertGameAllowed(input.bggId, input.name);
     const now = Date.now();
     const game = await ctx.db
       .query("games")
@@ -154,11 +172,12 @@ export const add = mutation({
 
     let gameId;
     if (game) {
-      await ctx.db.patch(game._id, { ...input, updatedAt: now });
+      await ctx.db.patch(game._id, { ...input, contentRating, updatedAt: now });
       gameId = game._id;
     } else {
       gameId = await ctx.db.insert("games", {
         ...input,
+        contentRating,
         createdAt: now,
         updatedAt: now,
       });
@@ -180,7 +199,7 @@ export const add = mutation({
       .order("desc")
       .take(20);
     const readyRulebook = rulebooks.find(
-      (rulebook) => rulebook.status === "ready" && rulebook.globalStatus !== "reported" && rulebook.globalStatus !== "deprecated",
+      (rulebook) => rulebook.status === "ready" && rulebook.globalStatus !== "reported" && rulebook.globalStatus !== "deprecated" && rulebookIsAccessible(rulebook, userId),
     );
     const libraryGameId = await ctx.db.insert("libraryGames", {
       userId,
@@ -228,21 +247,23 @@ export const addExpansions = mutation({
   returns: v.null(),
   handler: async (ctx, { libraryGameId, games: inputs }) => {
     const userId = await requireUserId(ctx);
+    await requireAiConsent(ctx, userId);
     const parent = await ctx.db.get(libraryGameId);
     if (!parent || parent.userId !== userId) throw new Error("Library game not found");
     const now = Date.now();
     for (const input of inputs) {
       if (!input.isExpansion) throw new Error("Only expansions can be attached to this chat");
+      const contentRating = assertGameAllowed(input.bggId, input.name);
       let game = await ctx.db.query("games").withIndex("by_bgg_id", (q) => q.eq("bggId", input.bggId)).unique();
-      if (game) await ctx.db.patch(game._id, { ...input, updatedAt: now });
+      if (game) await ctx.db.patch(game._id, { ...input, contentRating, updatedAt: now });
       else {
-        const gameId = await ctx.db.insert("games", { ...input, createdAt: now, updatedAt: now });
+        const gameId = await ctx.db.insert("games", { ...input, contentRating, createdAt: now, updatedAt: now });
         game = await ctx.db.get(gameId);
       }
       if (!game) throw new Error("Could not create expansion");
       let expansion = await ctx.db.query("libraryGames").withIndex("by_user_and_game", (q) => q.eq("userId", userId).eq("gameId", game!._id)).unique();
       const rulebooks = await ctx.db.query("rulebooks").withIndex("by_game", (q) => q.eq("gameId", game!._id)).order("desc").take(20);
-      const readyRulebook = rulebooks.find((rulebook) => rulebook.status === "ready" && rulebook.globalStatus !== "reported" && rulebook.globalStatus !== "deprecated");
+      const readyRulebook = rulebooks.find((rulebook) => rulebook.status === "ready" && rulebook.globalStatus !== "reported" && rulebook.globalStatus !== "deprecated" && rulebookIsAccessible(rulebook, userId));
       if (expansion) {
         await ctx.db.patch(expansion._id, { parentLibraryGameId: libraryGameId, ...(readyRulebook ? { rulebookId: readyRulebook._id, status: "ready", statusLabel: "Ready", statusMessage: "Expansion rulebook is ready.", progress: 100 } : {}), updatedAt: now });
       } else {
@@ -278,7 +299,8 @@ export const generateRulebookUploadUrl = mutation({
   args: {},
   returns: v.string(),
   handler: async (ctx) => {
-    await requireUserId(ctx);
+    const userId = await requireUserId(ctx);
+    await requireAiConsent(ctx, userId);
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -293,6 +315,8 @@ export const addManualRulebook = mutation({
   returns: v.id("libraryGames"),
   handler: async (ctx, { game: input, sourceUrl, sourceStorageId, fileName }) => {
     const userId = await requireUserId(ctx);
+    await requireAiConsent(ctx, userId);
+    const contentRating = assertGameAllowed(input.bggId, input.name);
     if ((sourceUrl ? 1 : 0) + (sourceStorageId ? 1 : 0) !== 1) {
       throw new Error("Choose one PDF file or one PDF URL");
     }
@@ -324,11 +348,12 @@ export const addManualRulebook = mutation({
       .unique();
     let gameId;
     if (existingGame) {
-      await ctx.db.patch(existingGame._id, { ...input, updatedAt: now });
+      await ctx.db.patch(existingGame._id, { ...input, contentRating, updatedAt: now });
       gameId = existingGame._id;
     } else {
       gameId = await ctx.db.insert("games", {
         ...input,
+        contentRating,
         createdAt: now,
         updatedAt: now,
       });

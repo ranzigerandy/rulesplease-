@@ -10,6 +10,7 @@ const modules = import.meta.glob("./**/*.ts");
 describe("manual rulebook imports", () => {
   test("creates a queued ingestion job for a user-supplied PDF URL", async () => {
     const t = convexTest(schema, modules).withIdentity({ subject: "user_import_owner" });
+    await t.mutation(api.compliance.acceptAiConsent, {});
     const libraryGameId = await t.mutation(api.library.addManualRulebook, {
       game: {
         bggId: 281259,
@@ -36,6 +37,7 @@ describe("manual rulebook imports", () => {
 
   test("rejects an invalid URL and ambiguous import input", async () => {
     const t = convexTest(schema, modules).withIdentity({ subject: "user_import_owner" });
+    await t.mutation(api.compliance.acceptAiConsent, {});
     const game = { bggId: 281260, name: "Invalid Import", isExpansion: false };
     await expect(t.mutation(api.library.addManualRulebook, {
       game,
@@ -48,6 +50,7 @@ describe("manual rulebook imports", () => {
 describe("shared indexed rulebooks", () => {
   test("opens an identical ready rulebook instantly without another ingestion job", async () => {
     const t = convexTest(schema, modules).withIdentity({ subject: "user_shared_reader" });
+    await t.mutation(api.compliance.acceptAiConsent, {});
     const now = Date.now();
     const ready = await t.run(async (ctx) => {
       const gameId = await ctx.db.insert("games", {

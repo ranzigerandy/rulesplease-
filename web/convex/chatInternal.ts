@@ -37,8 +37,9 @@ export const authorizedContext = internalQuery({
     const rulebook = boundRulebook?.status === "ready"
       ? boundRulebook
       : rulebooks.find(
-          (candidate) => candidate.status === "ready" && candidate.globalStatus !== "reported" && candidate.globalStatus !== "deprecated",
+          (candidate) => candidate.status === "ready" && candidate.globalStatus !== "reported" && candidate.globalStatus !== "deprecated" && (candidate.visibility !== "private" || candidate.ownerUserId === args.userId),
         );
+    if (rulebook?.visibility === "private" && rulebook.ownerUserId !== args.userId) throw new Error("Rulebook is not accessible");
     if (!game || !rulebook) throw new Error("Rulebook is not ready");
     const expansionLibraries = await ctx.db
       .query("libraryGames")
@@ -49,7 +50,7 @@ export const authorizedContext = internalQuery({
       const expansionRulebook = expansionLibrary.rulebookId
         ? await ctx.db.get(expansionLibrary.rulebookId)
         : null;
-      return expansionGame && expansionRulebook?.status === "ready"
+      return expansionGame && expansionRulebook?.status === "ready" && (expansionRulebook.visibility !== "private" || expansionRulebook.ownerUserId === args.userId)
         ? { game: expansionGame, rulebook: expansionRulebook }
         : null;
     }));

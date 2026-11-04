@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { cardInput, teachingPhase, teachingSnapshot, topicInput, reportCategory } from "./teachingValidators";
 
 export const libraryStatus = v.union(
   v.literal("queued"),
@@ -23,6 +24,38 @@ export const jobStatus = v.union(
 );
 
 export default defineSchema({
+  teachingLessons: defineTable({
+    userId: v.string(), libraryGameId: v.id("libraryGames"), cacheKey: v.string(), language: v.string(), version: v.string(),
+    sources: v.array(teachingSnapshot), phase: teachingPhase,
+    resumePhase: v.optional(teachingPhase), step: v.number(), attempts: v.number(),
+    sourceIndex: v.number(), cursor: v.union(v.string(), v.null()), offset: v.number(),
+    topicCount: v.number(), cardCount: v.number(), readMinutes: v.number(),
+    error: v.optional(v.string()), startedAt: v.number(), updatedAt: v.number(), readyAt: v.optional(v.number()),
+    resumes: v.number(), questions: v.number(),
+  }).index("by_user_id_and_cache_key", ["userId", "cacheKey"]).index("by_user_id", ["userId"]).index("by_user_id_and_library_game_id_and_updated_at", ["userId", "libraryGameId", "updatedAt"]),
+  teachingTopics: defineTable({
+    ...topicInput.fields, lessonId: v.id("teachingLessons"), userId: v.string(), order: v.number(),
+  }).index("by_lesson_id_and_chapter_and_order", ["lessonId", "chapter", "order"]).index("by_user_id", ["userId"]),
+  teachingCards: defineTable({
+    ...cardInput.fields, lessonId: v.id("teachingLessons"), userId: v.string(), order: v.number(),
+  }).index("by_lesson_id_and_order", ["lessonId", "order"]).index("by_user_id", ["userId"]),
+  teachingProgress: defineTable({
+    userId: v.string(), lessonId: v.id("teachingLessons"), currentCardId: v.id("teachingCards"), completedAt: v.optional(v.number()), updatedAt: v.number(),
+  }).index("by_user_id_and_lesson_id", ["userId", "lessonId"]).index("by_user_id", ["userId"]),
+  teachingCardProgress: defineTable({
+    userId: v.string(), lessonId: v.id("teachingLessons"), cardId: v.id("teachingCards"), read: v.boolean(), scroll: v.number(), updatedAt: v.number(),
+  }).index("by_lesson_id_and_card_id", ["lessonId", "cardId"]).index("by_lesson_id", ["lessonId"]).index("by_user_id", ["userId"]),
+  teachingThreads: defineTable({
+    userId: v.string(), lessonId: v.id("teachingLessons"), cardId: v.id("teachingCards"), agentThreadId: v.string(),
+    busy: v.boolean(), busyUntil: v.number(),
+  }).index("by_lesson_id_and_card_id", ["lessonId", "cardId"]).index("by_user_id", ["userId"]),
+  teachingCitations: defineTable({
+    userId: v.string(), lessonId: v.id("teachingLessons"), cardId: v.id("teachingCards"), messageId: v.string(), chunkIds: v.array(v.id("rulebookChunks")),
+  }).index("by_card_id", ["cardId"]).index("by_user_id", ["userId"]),
+  teachingReports: defineTable({
+    userId: v.string(), lessonId: v.id("teachingLessons"), cardId: v.id("teachingCards"), messageId: v.optional(v.string()),
+    category: reportCategory, note: v.optional(v.string()), status: v.literal("open"), createdAt: v.number(),
+  }).index("by_user_id", ["userId"]).index("by_status", ["status"]),
   games: defineTable({
     bggId: v.number(),
     name: v.string(),
@@ -32,6 +65,11 @@ export default defineSchema({
     usersRated: v.optional(v.number()),
     isExpansion: v.boolean(),
     thumbnailUrl: v.optional(v.string()),
+    contentRating: v.optional(v.union(
+      v.literal("allowed"),
+      v.literal("restricted"),
+      v.literal("review_required"),
+    )),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_bgg_id", ["bggId"]),
@@ -70,6 +108,8 @@ export default defineSchema({
     contentType: v.optional(v.string()),
     candidateRank: v.optional(v.number()),
     storageId: v.optional(v.id("_storage")),
+    ownerUserId: v.optional(v.string()),
+    visibility: v.optional(v.union(v.literal("private"), v.literal("shared"))),
     reviewStatus: v.union(
       v.literal("pending"),
       v.literal("approved"),
@@ -84,6 +124,7 @@ export default defineSchema({
     discoveredAt: v.number(),
   })
     .index("by_game", ["gameId"])
+    .index("by_owner_user_id", ["ownerUserId"])
     .index("by_game_and_url", ["gameId", "url"])
     .index("by_game_and_review_status", ["gameId", "reviewStatus"]),
 
@@ -113,12 +154,15 @@ export default defineSchema({
     embeddingModel: v.optional(v.string()),
     documentHash: v.optional(v.string()),
     legacyKey: v.optional(v.string()),
+    ownerUserId: v.optional(v.string()),
+    visibility: v.optional(v.union(v.literal("private"), v.literal("shared"))),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_game", ["gameId"])
     .index("by_game_and_document_hash", ["gameId", "documentHash"])
     .index("by_source", ["sourceId"])
+    .index("by_owner_user_id", ["ownerUserId"])
     .index("by_status", ["status"])
     .index("by_legacy_key", ["legacyKey"]),
 
@@ -145,6 +189,7 @@ export default defineSchema({
   })
     .index("by_idempotency_key", ["idempotencyKey"])
     .index("by_status", ["status"])
+    .index("by_user", ["userId"])
     .index("by_user_and_status", ["userId", "status"])
     .index("by_library_game", ["libraryGameId"]),
 
@@ -159,6 +204,7 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_user_id", ["userId"])
     .index("by_user_id_and_library_game_id_and_rulebook_id", ["userId", "libraryGameId", "rulebookId"])
     .index("by_library_game_id", ["libraryGameId"])
     .index("by_rulebook_id_and_decision", ["rulebookId", "decision"]),
@@ -189,6 +235,7 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_user", ["userId"])
     .index("by_user_and_library_game", ["userId", "libraryGameId"])
     .index("by_agent_thread_id", ["agentThreadId"])
     .index("by_legacy_key", ["legacyKey"]),
@@ -204,6 +251,7 @@ export default defineSchema({
     sourceLabel: v.string(),
     order: v.number(),
   })
+    .index("by_user_id", ["userId"])
     .index("by_thread", ["chatThreadId"])
     .index("by_thread_and_message", ["chatThreadId", "agentMessageId"]),
 
@@ -214,7 +262,47 @@ export default defineSchema({
     rating: v.union(v.literal("helpful"), v.literal("incorrect")),
     note: v.optional(v.string()),
     createdAt: v.number(),
-  }).index("by_thread_and_message", ["chatThreadId", "agentMessageId"]),
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_thread_and_message", ["chatThreadId", "agentMessageId"]),
+
+  answerReports: defineTable({
+    userId: v.string(),
+    chatThreadId: v.id("chatThreads"),
+    agentMessageId: v.string(),
+    category: v.union(
+      v.literal("offensive"),
+      v.literal("harmful"),
+      v.literal("privacy"),
+      v.literal("copyright"),
+      v.literal("other"),
+    ),
+    note: v.optional(v.string()),
+    status: v.union(v.literal("open"), v.literal("reviewed"), v.literal("resolved")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_thread_and_message", ["chatThreadId", "agentMessageId"]),
+
+  userConsents: defineTable({
+    userId: v.string(),
+    policyVersion: v.string(),
+    consentedAt: v.number(),
+    revokedAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_user_id", ["userId"]),
+
+  accountDeletionJobs: defineTable({
+    userId: v.string(),
+    status: v.union(v.literal("queued"), v.literal("processing"), v.literal("completed"), v.literal("failed")),
+    phase: v.string(),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  }).index("by_user_id", ["userId"]),
 
   pushTokens: defineTable({
     userId: v.string(),
@@ -240,6 +328,7 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_user_id", ["userId"])
     .index("by_job_id_and_kind", ["jobId", "kind"])
     .index("by_status", ["status"]),
 

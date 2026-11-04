@@ -1,0 +1,985 @@
+/* Explain this game inherits the production app frame, cover and header. */
+.rules-app.teach-app {
+  height: 100dvh;
+  min-height: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+.teach-app .teach-app-main {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.teach-shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--color-text);
+  background: transparent;
+  font-family: inherit;
+}
+.teach-shell button,
+.teach-shell a,
+.teach-shell select,
+.teach-shell textarea {
+  touch-action: manipulation;
+}
+.teach-shell :is(button, a, select, textarea):focus-visible,
+.teach-card:focus-visible,
+.teach-dialog :focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.teach-shell ::selection,
+.teach-dialog ::selection {
+  color: var(--color-app-action-ink);
+  background: #dff5f5;
+}
+.chat-header.teach-header {
+  flex-shrink: 0;
+  min-height: 64px;
+  padding: 7px 12px;
+  gap: 9px;
+  grid-template-columns: 40px 38px minmax(0, 1fr) auto;
+  border: 0;
+  background: transparent;
+}
+.chat-header.teach-header-simple {
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+}
+.teach-header .round-action {
+  width: 40px;
+  height: 40px;
+}
+.teach-header .game-cover {
+  width: 38px;
+  height: 46px;
+  border-radius: 7px;
+}
+.teach-header .chat-title > .teach-game-title {
+  display: block;
+  width: auto;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 650;
+}
+.teach-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.teach-header-actions > button,
+.teach-header-actions > a {
+  min-height: 40px;
+  font-size: 12px;
+}
+.teach-header-actions > svg {
+  margin-inline: 10px;
+  color: var(--color-text-muted);
+}
+.teach-icon {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-surface-subtle);
+  color: inherit;
+}
+.teach-icon:hover {
+  background: var(--color-surface-strong);
+}
+.teach-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.teach-intro,
+.teach-library {
+  width: 100%;
+  min-height: 0;
+  padding: 24px 20px 32px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.teach-mascot {
+  display: block;
+  height: auto;
+  margin: 0 auto 16px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.teach-intro h1,
+.teach-library h1 {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  text-align: center;
+  text-wrap: balance;
+}
+.teach-lede {
+  margin: 12px 0 24px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: center;
+}
+.teach-source-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--color-surface-subtle);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.teach-source-label svg {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+.teach-options {
+  display: grid;
+  gap: 20px;
+  margin: 24px 0;
+}
+.teach-options > label {
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.teach-options select,
+.teach-report-form select,
+.teach-report-form textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  color: inherit;
+  background: var(--color-surface);
+  font-size: 14px;
+  font-weight: 400;
+}
+.teach-options legend {
+  font-size: 15px;
+  font-weight: 650;
+}
+.teach-options fieldset > p,
+.teach-checkbox small {
+  margin: 6px 0 10px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.teach-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  font-size: 14px;
+}
+.teach-checkbox input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-accent-positive);
+}
+.teach-checkbox small {
+  display: block;
+  margin: 0;
+}
+.teach-start {
+  width: 100%;
+  min-height: 48px;
+  padding-inline: 18px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--color-app-action-ink);
+  background: var(--color-app-action);
+  box-shadow: none;
+  font-size: 15px;
+  font-weight: 700;
+}
+.teach-start:hover {
+  background: var(--color-app-action-hover);
+}
+.teach-footnote {
+  margin-top: 14px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+.teach-notice {
+  padding: 16px;
+  margin: 20px 0;
+  border-radius: 16px;
+  background: var(--color-surface-subtle);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.teach-notice p {
+  margin: 8px 0;
+}
+.teach-notice a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  text-decoration: underline;
+}
+.teach-error {
+  margin: 12px 0;
+  color: var(--color-danger);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.teach-preparing {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 24px 0;
+  font-size: 14px;
+}
+.teach-preparing > svg {
+  flex-shrink: 0;
+  width: 20px;
+}
+.teach-preparing p {
+  margin: 8px 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.teach-preparing small {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+.teach-loading {
+  width: min(var(--app-frame-width), 100%);
+  height: 100dvh;
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  color: var(--color-text-muted);
+  background: var(--color-background);
+  font-size: 14px;
+}
+.teach-overview {
+  margin-top: 28px;
+}
+.teach-overview h2 {
+  font-size: 20px;
+  font-weight: 650;
+}
+.teach-overview > p {
+  margin: 8px 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+.teach-overview ol {
+  margin-top: 16px;
+  padding-left: 22px;
+  list-style: decimal;
+}
+.teach-overview li {
+  padding: 12px 0 12px 4px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 14px;
+}
+.teach-overview li small {
+  float: right;
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+/* The same compact search field and cover-led rows as the app library. */
+.teach-library {
+  padding-top: 20px;
+}
+.teach-search-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.teach-library-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 0 13px;
+  border-radius: 14px;
+  color: var(--color-text-muted);
+  background: var(--color-surface-subtle);
+}
+.teach-library-search:focus-within {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.teach-library-search svg {
+  width: 18px;
+  flex-shrink: 0;
+}
+.teach-library-search input {
+  min-width: 0;
+  height: 48px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  font-size: 15px;
+}
+.teach-library-search input:focus-visible {
+  outline: 0;
+  box-shadow: none;
+}
+.teach-library-count {
+  margin: 20px 0 6px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+.teach-library-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.teach-library-game {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 12px;
+  min-height: 80px;
+  padding: 12px 4px;
+  border-radius: 12px;
+}
+.teach-library-game:hover {
+  background: var(--color-surface-subtle);
+}
+.teach-library-game .game-cover,
+.teach-library-game .game-monogram {
+  width: 46px;
+  height: 56px;
+  border-radius: 8px;
+}
+.teach-library-game > div {
+  min-width: 0;
+}
+.teach-library-game h2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 650;
+}
+.teach-library-game p {
+  margin-top: 3px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.teach-library-game > svg {
+  color: var(--color-text-muted);
+}
+.teach-library-source {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.teach-library-manage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  margin-top: 20px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.teach-library-manage:hover {
+  background: var(--color-surface-subtle);
+}
+.teach-library-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-block: 24px;
+  font-size: 14px;
+}
+/* Reading uses the chat's type scale and keeps navigation within the app. */
+.teach-aid-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 6px 16px 10px;
+  flex-shrink: 0;
+}
+.teach-aid-bar button {
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px;
+  border-radius: 999px;
+  background: var(--color-surface-subtle);
+  font-size: 12px;
+  font-weight: 600;
+}
+.teach-aid-bar button:hover {
+  background: var(--color-surface-strong);
+}
+.teach-aid-bar svg {
+  width: 16px;
+  height: 16px;
+}
+.teach-reader-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.teach-rail {
+  display: none;
+}
+.teach-mobile-only {
+  display: inline-flex;
+}
+.teach-reading-column {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 4px 20px 0;
+}
+.teach-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0 14px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+.teach-progress progress {
+  width: 96px;
+  max-width: 32%;
+  height: 4px;
+  accent-color: var(--color-accent-positive);
+  border: 0;
+  border-radius: 99px;
+  overflow: hidden;
+}
+.teach-progress progress::-webkit-progress-bar {
+  background: var(--color-surface-strong);
+}
+.teach-progress progress::-webkit-progress-value {
+  background: var(--color-accent-positive);
+}
+.teach-card {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 0 24px;
+  scroll-padding-top: 12px;
+  overscroll-behavior: contain;
+}
+.teach-card-location {
+  margin-bottom: 10px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+.teach-card h1 {
+  outline: none;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+.teach-card-copy {
+  max-width: 65ch;
+  font-size: 17px;
+  line-height: 1.6;
+}
+.teach-card-copy p {
+  margin-top: 18px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.teach-anchor {
+  margin: 20px 0;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--color-surface-subtle);
+  font-size: 15px;
+  line-height: 1.6;
+  font-weight: 600;
+}
+.teach-anchor p {
+  margin: 0;
+}
+.teach-optional {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--color-surface-subtle);
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.teach-example {
+  margin-top: 22px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--color-surface-subtle);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.teach-example p {
+  margin-top: 6px;
+}
+.teach-card-tools {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+.teach-question-button {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 13px;
+}
+.teach-question-button:hover {
+  background: var(--color-surface-subtle);
+}
+.teach-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 0 max(14px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+.teach-navigation > span {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+.teach-navigation button {
+  min-height: 44px;
+  border-radius: 999px;
+  padding-inline: 14px;
+  font-size: 13px;
+  box-shadow: none;
+}
+.teach-navigation button:last-child {
+  color: var(--color-app-action-ink);
+  background: var(--color-app-action);
+}
+.teach-navigation button:last-child:hover {
+  background: var(--color-app-action-hover);
+}
+.teach-save-status {
+  padding: 8px 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.teach-completed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  color: var(--color-accent-positive);
+  font-size: 12px;
+}
+.teach-end-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 0 12px;
+  font-size: 12px;
+}
+.teach-end-actions button,
+.teach-end-actions a {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 44px;
+  text-decoration: underline;
+}
+/* The existing app uses centered bottom sheets, including on desktop. */
+.teach-dialog {
+  position: fixed;
+  inset: auto 0 0;
+  margin: 0 auto;
+  width: min(var(--app-frame-width), 100%);
+  max-width: 100%;
+  height: min(88dvh, 900px);
+  max-height: calc(100dvh - 12px);
+  padding: 0;
+  border: 0;
+  border-radius: 24px 24px 0 0;
+  color: var(--color-text);
+  background: var(--color-surface);
+  box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.18);
+  font-family: inherit;
+}
+.teach-dialog::backdrop {
+  background: rgba(13, 13, 13, 0.26);
+}
+.teach-dialog-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px 18px max(18px, env(safe-area-inset-bottom));
+}
+.teach-dialog-inner > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  flex-shrink: 0;
+}
+.teach-dialog h2 {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.teach-dialog nav,
+.teach-play-guide {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.teach-dialog nav > h2 {
+  display: none;
+}
+.teach-chapter {
+  margin-bottom: 20px;
+}
+.teach-chapter h3 {
+  margin: 8px 0;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 650;
+}
+.teach-chapter button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 48px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  color: var(--color-text-muted);
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.teach-chapter button:hover,
+.teach-chapter button[aria-current="step"] {
+  color: var(--color-text);
+  background: var(--color-surface-subtle);
+}
+.teach-chapter button[aria-current="step"] {
+  font-weight: 600;
+}
+.teach-chapter button svg {
+  flex-shrink: 0;
+  color: var(--color-accent-positive);
+}
+.teach-guide-switch {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--color-surface-subtle);
+}
+.teach-guide-switch button {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding-inline: 8px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--color-text-muted);
+  box-shadow: none;
+  font-size: 13px;
+}
+.teach-guide-switch button[aria-pressed="true"] {
+  color: var(--color-app-action-ink);
+  background: #dff5f5;
+  font-weight: 650;
+}
+.teach-guide-section,
+.teach-guide-links {
+  margin-top: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+.teach-guide-section h3,
+.teach-guide-links h3 {
+  margin-bottom: 12px;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.teach-guide-section p {
+  margin-top: 14px;
+  font-size: 15px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.teach-dialog .teach-guide-links {
+  flex: none;
+  overflow: visible;
+}
+.teach-guide-links button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 48px;
+  gap: 12px;
+  text-align: left;
+  font-size: 14px;
+}
+.teach-guide-links button:hover {
+  text-decoration: underline;
+}
+.teach-walkthrough {
+  margin: 20px 0;
+  padding-left: 22px;
+  list-style: decimal;
+}
+.teach-walkthrough li {
+  margin-top: 20px;
+  padding-left: 4px;
+}
+.teach-walkthrough li::marker {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+.teach-walkthrough h4 {
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+.teach-walkthrough p {
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 1.65;
+}
+.teach-sources {
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.teach-sources[open] {
+  width: 100%;
+  border-radius: 16px;
+}
+.teach-sources summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 8px 12px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+.teach-sources summary::-webkit-details-marker {
+  display: none;
+}
+.teach-sources summary svg {
+  width: 14px;
+  height: 14px;
+}
+.teach-sources > div {
+  padding: 12px;
+  border-top: 1px solid var(--color-border);
+}
+.teach-sources blockquote {
+  max-height: 240px;
+  overflow: auto;
+  margin: 10px 0;
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.teach-sources button,
+.teach-sources a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 44px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.teach-report {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+.teach-questions {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.teach-question-context {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.teach-question-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 0;
+  overscroll-behavior: contain;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.teach-message {
+  padding: 14px 0;
+}
+.teach-message > strong {
+  font-size: 12px;
+}
+.teach-message.user {
+  padding: 14px;
+  border-radius: 20px;
+  background: var(--color-surface-subtle);
+}
+.teach-questions form {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+.teach-questions label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.teach-questions textarea {
+  min-height: 80px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-surface);
+  color: inherit;
+  caret-color: var(--color-accent);
+  font-size: 15px;
+  resize: vertical;
+}
+.teach-questions form button {
+  justify-self: end;
+  min-height: 44px;
+  border-radius: 999px;
+}
+.teach-report-form {
+  display: grid;
+  gap: 20px;
+  padding-top: 12px;
+  overflow-y: auto;
+}
+.teach-report-form label {
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+}
+.teach-report-form textarea {
+  min-height: 110px;
+}
+.teach-entry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 9px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.teach-entry:hover {
+  background: var(--color-surface-subtle);
+}
+.teach-entry svg {
+  width: 17px;
+  height: 17px;
+}
+.teach-library-entry {
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.chat-empty .teach-entry {
+  margin-top: 24px;
+}
+@media (max-width: 680px) {
+  .chat-header > .teach-entry {
+    padding: 10px;
+  }
+  .chat-header > .teach-entry span {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .teach-shell *,
+  .teach-dialog * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Match the app’s unobtrusive scrolling surfaces. */
+.teach-app :is(.teach-intro, .teach-library, .teach-card),
+.teach-dialog :is(nav, .teach-play-guide, .teach-question-messages) {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.teach-app :is(.teach-intro, .teach-library, .teach-card)::-webkit-scrollbar,
+.teach-dialog
+  :is(nav, .teach-play-guide, .teach-question-messages)::-webkit-scrollbar {
+  display: none;
+}

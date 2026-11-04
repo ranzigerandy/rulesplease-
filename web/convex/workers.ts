@@ -162,25 +162,37 @@ export const prepareRulebook = internalMutation({
     assertLease(job, leaseToken);
     if (!job) throw new Error("Job not found");
     const now = Date.now();
-    const source = await ctx.db
+    const sourceCandidates = await ctx.db
       .query("rulebookSources")
       .withIndex("by_game_and_url", (q) =>
         q.eq("gameId", job.gameId).eq("url", input.url),
       )
-      .unique();
+      .order("desc")
+      .take(20);
+    const manualImport = Boolean(job.sourceUrl || job.sourceStorageId);
+    const parsedHost = (() => {
+      try { return new URL(input.url).hostname.toLowerCase(); } catch { return ""; }
+    })();
+    const officialHosts = ["asmodee.com", "hans-im-glueck.de", "images.zmangames.com", "zmangames.com"];
+    const approvedPublisherSource = !manualImport && input.confidence === "verified" && officialHosts.some((host) => parsedHost === host || parsedHost.endsWith(`.${host}`));
+    const visibility = approvedPublisherSource ? "shared" as const : "private" as const;
+    const ownerUserId = visibility === "private" ? job.userId : undefined;
+    const source = sourceCandidates.find((candidate) => candidate.visibility !== "private" || candidate.ownerUserId === job.userId) ?? null;
     const reviewStatus = source?.reviewStatus === "approved"
       ? "approved"
       : "review_required";
     if (source) {
-      await ctx.db.patch(source._id, { ...input, reviewStatus });
+      await ctx.db.patch(source._id, { ...input, reviewStatus, visibility, ownerUserId, legalStatus: approvedPublisherSource ? "allowed" : source.legalStatus });
     }
     const sourceId = source
       ? source._id
       : await ctx.db.insert("rulebookSources", {
           gameId: job.gameId,
           ...input,
+          visibility,
+          ...(ownerUserId ? { ownerUserId } : {}),
           reviewStatus,
-          legalStatus: "unknown",
+          legalStatus: approvedPublisherSource ? "allowed" : "unknown",
           discoveredAt: now,
         });
     let rulebook = job.rulebookId ? await ctx.db.get(job.rulebookId) : null;
@@ -192,7 +204,7 @@ export const prepareRulebook = internalMutation({
         )
         .order("desc")
         .first();
-      if (rulebook?.globalStatus === "reported" || rulebook?.globalStatus === "deprecated") {
+      if (rulebook && (rulebook.globalStatus === "reported" || rulebook.globalStatus === "deprecated" || (rulebook.visibility === "private" && rulebook.ownerUserId !== job.userId))) {
         rulebook = null;
       }
     }
@@ -222,6 +234,8 @@ export const prepareRulebook = internalMutation({
           verificationCount: 0,
           reportCount: 0,
           status: "processing",
+          visibility,
+          ...(ownerUserId ? { ownerUserId } : {}),
           ...(input.storageId ? { storageId: input.storageId } : {}),
           ...(input.documentHash ? { documentHash: input.documentHash } : {}),
           pageCount: 0,
@@ -234,6 +248,8 @@ export const prepareRulebook = internalMutation({
       await ctx.db.patch(rulebook._id, {
         sourceId,
         variantKey,
+        visibility,
+        ownerUserId,
         ...(input.storageId ? { storageId: input.storageId } : {}),
         ...(input.documentHash ? { documentHash: input.documentHash } : {}),
         updatedAt: now,

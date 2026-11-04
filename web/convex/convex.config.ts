@@ -8,6 +8,9 @@ const app = defineApp({
     RULES_PLEASE_MIGRATION_SECRET: v.optional(v.string()),
     OPENAI_ANSWER_MODEL: v.optional(v.string()),
     OPENAI_EMBEDDING_MODEL: v.optional(v.string()),
+    TEACH_ENABLED: v.optional(v.string()),
+    TEACH_USER_IDS: v.optional(v.string()),
+    OPENAI_TEACH_MODEL: v.optional(v.string()),
   },
 });
 app.use(agent);

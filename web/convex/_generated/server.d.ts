@@ -27,8 +27,11 @@ import type { DataModel } from "./dataModel.js";
 type Env = {
   readonly OPENAI_ANSWER_MODEL: string | undefined;
   readonly OPENAI_EMBEDDING_MODEL: string | undefined;
+  readonly OPENAI_TEACH_MODEL: string | undefined;
   readonly RULES_PLEASE_MIGRATION_SECRET: string | undefined;
   readonly RULES_PLEASE_WORKER_SECRET: string | undefined;
+  readonly TEACH_ENABLED: string | undefined;
+  readonly TEACH_USER_IDS: string | undefined;
 };
 
 /**

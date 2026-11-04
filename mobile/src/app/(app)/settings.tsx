@@ -1,3 +1,5 @@
+import { api } from "@rulesplease/shared";
+import { useMutation } from "convex/react";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { LogOut, UserRound } from "lucide-react-native";
 import { Alert, StyleSheet, Text, View } from "react-native";
@@ -7,10 +9,12 @@ import { colors, radius } from "@/constants/design";
 export default function SettingsScreen() {
   const { user } = useUser();
   const { signOut } = useAuth();
+  const revokeConsent = useMutation(api.compliance.revokeAiConsent);
   return <Screen><Header title="Settings" />
     <View style={styles.account}><View style={styles.avatar}><UserRound color={colors.text} size={30} /></View><View style={{ flex: 1 }}><Text style={styles.name}>{user?.fullName ?? "Rules Please player"}</Text><Text style={styles.email}>{user?.primaryEmailAddress?.emailAddress}</Text></View></View>
     <Text style={styles.label}>APP LANGUAGE</Text><View style={styles.option}><Text style={styles.optionTitle}>English interface</Text><Text style={styles.optionBody}>Answers automatically follow the language of your question.</Text></View>
     <View style={styles.privacy}><Text style={styles.optionTitle}>Privacy</Text><Text style={styles.optionBody}>Uploaded rulebooks and image-only pages are processed by Convex, Railway and OpenAI to provide search, OCR and cited answers.</Text></View>
+    <PrimaryButton secondary onPress={() => Alert.alert("Withdraw AI consent?", "Uploads and new AI answers will pause until you consent again.", [{ text: "Cancel", style: "cancel" }, { text: "Withdraw", style: "destructive", onPress: () => void revokeConsent({}).catch(() => Alert.alert("Could not withdraw AI consent")) }])}>Withdraw AI consent</PrimaryButton>
     <View style={styles.bottom}><PrimaryButton secondary onPress={() => Alert.alert("Sign out?", "Your library remains saved to your account.", [{ text: "Cancel", style: "cancel" }, { text: "Sign out", style: "destructive", onPress: () => signOut() }])}><LogOut size={19} color={colors.text} /> Sign out</PrimaryButton></View>
   </Screen>;
 }

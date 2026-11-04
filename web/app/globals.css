@@ -18,6 +18,10 @@
     --color-border: rgba(13, 13, 13, .10);
     --color-accent: #0d0d0d;
     --color-accent-positive: #10a37f;
+    --app-frame-width: 430px;
+    --color-app-action: hsl(183 47% 59%);
+    --color-app-action-hover: hsl(183 47% 53%);
+    --color-app-action-ink: hsl(183 47% 20%);
     --color-danger: #d92d20;
 
     --background: 0 0% 100%;
@@ -1116,7 +1120,7 @@
 }
 
 @media (min-width: 901px) {
-  .rules-app { width: min(430px, 100vw); display: block; margin: 0 auto; padding-bottom: 76px; overflow: hidden; box-shadow: 0 0 0 1px rgba(13, 13, 13, .08), 0 20px 56px rgba(13, 13, 13, .13); }
+  .rules-app { width: min(var(--app-frame-width), 100vw); display: block; margin: 0 auto; padding-bottom: 76px; overflow: hidden; box-shadow: 0 0 0 1px rgba(13, 13, 13, .08), 0 20px 56px rgba(13, 13, 13, .13); }
   .rules-app.is-chat { padding-bottom: 0; }
   .rules-rail { display: none; }
   .rules-main { height: auto; min-height: 100svh; overflow: visible; }
@@ -1322,12 +1326,12 @@
   right: 18px;
   width: auto;
   min-height: 48px;
-  color: hsl(183 47% 20%);
-  background: hsl(183 47% 59%);
+  color: var(--color-app-action-ink);
+  background: var(--color-app-action);
   box-shadow: 0 10px 20px -12px hsl(183 47% 32% / .55);
   font-weight: 700;
 }
-.rules-app:not(.is-chat) .home-new-chat:hover { background: hsl(183 47% 53%); }
+.rules-app:not(.is-chat) .home-new-chat:hover { background: var(--color-app-action-hover); }
 
 html, body, .rules-app, .rules-main, .home-screen, .subscreen, .message-stream, .rulebook-info-content, .rules-app.is-chat .rulebook-approval {
   scrollbar-width: none;
@@ -1568,3 +1572,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar, .rules-app::-webkit-scrollbar,
   .approval-pdf-preview { max-height: 44svh; }
   .approval-pdf-preview canvas { max-height: 44svh; object-fit: contain; }
 }
+
+/* Teach and rulebook actions share the chat header’s final column. */
+.chat-header:has(> .chat-header-actions) { grid-template-columns: 40px 38px minmax(0, 1fr) auto; }
+.chat-header-actions { display: flex; align-items: center; gap: 6px; }
+.chat-header-actions .round-action { width: 40px; height: 40px; }
