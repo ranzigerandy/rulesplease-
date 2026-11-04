@@ -43,7 +43,7 @@ export function completePageCitations<
   return changed ? result : cards;
 }
 
-export function validateNumericCoverage(
+export function missingNumericCoverage(
   topics: { _id: string; title: string; facts: string }[],
   cards: { topicIds: string[]; paragraphs: string[]; example?: string }[],
 ) {
@@ -51,6 +51,7 @@ export function validateNumericCoverage(
     zero: "0",
     one: "1",
     two: "2",
+    twice: "2",
     three: "3",
     four: "4",
     five: "5",
@@ -102,11 +103,12 @@ export function validateNumericCoverage(
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "")
           .toLowerCase()
+          .replace(/\bonce(?=\s*(?:[.!?,;)]|$|per\b))/g, "1")
           .replace(/\p{L}+/gu, (word) => words[word] ?? word)
           .match(/\b\d+(?:[.,]\d+)?\b/g) ?? []
       ).map((value) => value.replace(",", ".")),
     );
-  const issues: string[] = [];
+  const issues: { topic: (typeof topics)[number]; missing: string[] }[] = [];
   for (const topic of topics) {
     const explained = numbers(
       cards
@@ -117,12 +119,22 @@ export function validateNumericCoverage(
     const missing = [...numbers(topic.facts)].filter(
       (value) => !explained.has(value),
     );
-    if (missing.length)
-      issues.push(
-        `The cards for "${topic.title}" omit required numerical values: ${missing.join(", ")}. Preserve all quantities and scoring rows in this topic's facts.`,
-      );
+    if (missing.length) issues.push({ topic, missing });
   }
-  if (issues.length) throw new Error(issues.join("\n"));
+  return issues;
+}
+
+export function validateNumericCoverage(
+  topics: Parameters<typeof missingNumericCoverage>[0],
+  cards: Parameters<typeof missingNumericCoverage>[1],
+) {
+  const issues = missingNumericCoverage(topics, cards);
+  if (issues.length)
+    throw new Error(
+      issues.map(({ topic, missing }) =>
+        `The cards for "${topic.title}" omit required numerical values: ${missing.join(", ")}. Preserve all quantities and scoring rows in this topic's facts.`,
+      ).join("\n"),
+    );
 }
 
 export function validateCardCoverage(
@@ -136,8 +148,11 @@ export function validateCardCoverage(
   allowedChunks?: Set<string>,
 ) {
   const covered = new Set(cards.flatMap((card) => card.topicIds));
-  if (topics.some((topic) => !covered.has(topic._id)))
-    throw new Error("Some rule topics are missing from the cards.");
+  const missing = topics.filter((topic) => !covered.has(topic._id));
+  if (missing.length)
+    throw new Error(
+      `Some rule topics are missing from the cards. Add complete cards for these topic IDs: ${missing.map((topic) => topic._id).join(", ")}.`,
+    );
   const topicIds = new Set(topics.map((topic) => topic._id));
   for (const card of cards) {
     if (

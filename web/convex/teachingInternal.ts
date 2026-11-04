@@ -1,13 +1,15 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
 import {
   cardAccess,
   lessonAccess,
   MAX_LESSON_ITEMS,
   scheduleTeachingStep,
   TEACH_VERSION,
+  TEACH_STEP_TIMEOUT_MS,
+  TEACH_WATCH_INTERVAL_MS,
   lessonPdfs,
   scopeTeachingPdfs,
   type TeachingPdf,
@@ -38,6 +40,7 @@ export type GenerationWork = {
   done: boolean;
   nextCursor: string | null;
 };
+const TEACH_CARD_BATCH_SIZE = 10;
 const jobArgs = { lessonId: v.id("teachingLessons"), step: v.number() };
 
 export { validateCardCoverage } from "./teachingCoverage";
@@ -120,12 +123,15 @@ export const work = internalQuery({
           "This rulebook has no readable passages. Replace the rulebook and try again.",
         );
     } else if (lesson.phase === "drafting") {
+      const batchSize = /^Some rule topics are missing/.test(lesson.error ?? "")
+        ? 5
+        : TEACH_CARD_BATCH_SIZE;
       const page = await ctx.db
         .query("teachingTopics")
         .withIndex("by_lesson_id_and_chapter_and_order", (q) =>
           q.eq("lessonId", lessonId),
         )
-        .paginate({ numItems: 6, cursor: lesson.cursor });
+        .paginate({ numItems: batchSize, cursor: lesson.cursor });
       topics = page.page;
       done = page.isDone;
       nextCursor = page.continueCursor;
@@ -147,7 +153,7 @@ export const work = internalQuery({
       const page = await ctx.db
         .query("teachingCards")
         .withIndex("by_lesson_id_and_order", (q) => q.eq("lessonId", lessonId))
-        .paginate({ numItems: 6, cursor: lesson.cursor });
+        .paginate({ numItems: TEACH_CARD_BATCH_SIZE, cursor: lesson.cursor });
       cards = page.page;
       topics = (
         await Promise.all(
@@ -200,6 +206,7 @@ export const work = internalQuery({
       }
       relatedTopics = allTopics.filter(
         (topic) =>
+          cards.some((card) => card.chapter === 7) ||
           chapters.has(topic.chapter) ||
           topic.chunkIds.some((id) => expansionChunks.has(id)),
       );
@@ -323,7 +330,7 @@ export const correctTopicFacts = internalMutation({
       return null;
     await lessonAccess(ctx, lesson.userId, lesson._id);
     if (
-      args.topics.length > 8 ||
+      args.topics.length > TEACH_CARD_BATCH_SIZE ||
       new Set(args.topics.map((t) => t.topicId)).size !== args.topics.length
     )
       throw new Error("Invalid inventory correction.");
@@ -480,7 +487,7 @@ export const commit = internalMutation({
       cardCount,
       offset:
         phase === lesson.phase
-          ? lesson.offset + (args.cards?.length ?? args.topics?.length ?? 6)
+          ? lesson.offset + (args.cards?.length ?? args.topics?.length ?? TEACH_CARD_BATCH_SIZE)
           : 0,
       readMinutes: lesson.readMinutes + words / 180,
       updatedAt: now,
@@ -496,6 +503,27 @@ export const commit = internalMutation({
   },
 });
 
+async function recordFailure(
+  ctx: MutationCtx,
+  lesson: Doc<"teachingLessons">,
+  error: string,
+  retry: boolean,
+) {
+  const attempts = lesson.attempts + 1;
+  const step = lesson.step + 1;
+  const update = { attempts, step, error: error.slice(0, 1200), updatedAt: Date.now() };
+  if (retry && attempts < 3) {
+    await ctx.db.patch(lesson._id, update);
+    await scheduleTeachingStep(ctx, { lessonId: lesson._id, step }, attempts * 2000);
+    return;
+  }
+  await ctx.db.patch(lesson._id, {
+    ...update,
+    phase: "failed",
+    resumePhase: lesson.phase,
+  });
+}
+
 export const fail = internalMutation({
   args: { ...jobArgs, error: v.string(), retry: v.boolean() },
   returns: v.null(),
@@ -508,29 +536,7 @@ export const fail = internalMutation({
       lesson.phase === "failed"
     )
       return null;
-    const attempts = lesson.attempts + 1;
-    const step = lesson.step + 1;
-    if (args.retry && attempts < 3) {
-      await ctx.db.patch(lesson._id, {
-        attempts,
-        step,
-        error: args.error.slice(0, 1200),
-        updatedAt: Date.now(),
-      });
-      await scheduleTeachingStep(
-        ctx,
-        { lessonId: lesson._id, step },
-        attempts * 2000,
-      );
-    } else
-      await ctx.db.patch(lesson._id, {
-        phase: "failed",
-        resumePhase: lesson.phase,
-        attempts,
-        step,
-        error: args.error.slice(0, 1200),
-        updatedAt: Date.now(),
-      });
+    await recordFailure(ctx, lesson, args.error, args.retry);
     return null;
   },
 });
@@ -552,30 +558,34 @@ export const watchdog = internalMutation({
     )
       return null;
     let stopped = false;
+    let canceled = false;
     if (args.scheduledId && args.deadline) {
       const task = await ctx.db.system.get(args.scheduledId);
+      canceled = task?.state.kind === "canceled";
       stopped =
         task?.state.kind === "failed" ||
-        task?.state.kind === "canceled" ||
+        canceled ||
         task?.state.kind === "success";
-      if (!stopped && Date.now() < args.deadline) {
+      const now = Date.now();
+      const deadline = Math.min(
+        args.deadline,
+        (task?.scheduledTime ?? lesson.updatedAt) + TEACH_STEP_TIMEOUT_MS,
+      );
+      if (!stopped && now < deadline) {
         await ctx.scheduler.runAfter(
-          Math.min(30_000, args.deadline - Date.now()),
+          Math.min(TEACH_WATCH_INTERVAL_MS, deadline - now),
           internal.teachingInternal.watchdog,
           args,
         );
         return null;
       }
     }
-    await ctx.db.patch(lesson._id, {
-      phase: "failed",
-      resumePhase: lesson.phase,
-      step: lesson.step + 1,
-      error: stopped
-        ? "Preparation stopped unexpectedly. Try again to resume from this step."
-        : "Preparation timed out. Try again to resume from this step.",
-      updatedAt: Date.now(),
-    });
+    await recordFailure(
+      ctx,
+      lesson,
+      stopped ? "Preparation stopped unexpectedly." : "Preparation timed out.",
+      Boolean(args.scheduledId && args.deadline && !canceled),
+    );
     return null;
   },
 });

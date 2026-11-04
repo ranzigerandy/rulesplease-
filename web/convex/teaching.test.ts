@@ -724,6 +724,46 @@ describe("inventory coverage repair", () => {
   });
 });
 
+test("accepts once as the same quantity as one resolution", () => {
+  const topics = [{ _id: "bonus", title: "Bonus", facts: "Resolve the bonus 1 time." }];
+  expect(() =>
+    validateNumericCoverage(topics, [{ topicIds: ["bonus"], paragraphs: ["Resolve the bonus once."] }]),
+  ).not.toThrow();
+  expect(() =>
+    validateNumericCoverage(topics, [{ topicIds: ["bonus"], paragraphs: ["Resolve the bonus once both spaces are covered."] }]),
+  ).toThrow("omit required numerical values: 1");
+});
+
+test("fills an omitted draft topic from reviewed notes before the final source check", async () => {
+  const { owner } = fixture();
+  const ids = await seed(owner);
+  const lessonId = await owner.mutation(api.teaching.start, {
+    libraryGameId: ids.libraryGameId,
+    expansionIds: [],
+    language: "English",
+  });
+  await owner.action(internal.teachingGeneration.advance, { lessonId, step: 0 });
+  const model = vi.mocked(generateText);
+  const defaultModel = model.getMockImplementation()!;
+  model.mockImplementationOnce(async (args) => {
+    const result = await defaultModel(args);
+    const draft = result.output as { cards: { chapter: number }[] };
+    draft.cards = draft.cards.filter((card) => card.chapter !== 2);
+    return result;
+  });
+
+  await owner.action(internal.teachingGeneration.advance, { lessonId, step: 1 });
+  const stored = await owner.run(async (ctx) => ({
+    lesson: await ctx.db.get(lessonId),
+    cards: await ctx.db.query("teachingCards")
+      .withIndex("by_lesson_id_and_order", (q) => q.eq("lessonId", lessonId))
+      .take(20),
+  }));
+  expect(stored.lesson?.phase).toBe("summary");
+  expect(stored.cards.find((card) => card.chapter === 2)?.paragraphs).toEqual([rules[2]]);
+  expect((await owner.query(api.teaching.view, { lessonId }))?.cards).toEqual([]);
+});
+
 describe("external PDF revision verification", () => {
   test("sends the exact verified bytes and refuses a changed document", async () => {
     const bytes = new TextEncoder().encode("%PDF-1.4 exact approved revision");
@@ -824,8 +864,10 @@ describe("original PDF grounding", () => {
         work.sourcePdfs![0].pageNumbers!.length,
       );
       expect(args.system).toContain("originalPageNumbers");
-      expect(args.model).toMatchObject({ modelId: "gpt-5.4" });
-      expect(args.providerOptions).toEqual({ openai: { store: false } });
+      expect(args.model).toMatchObject({ modelId: "gpt-5.4-mini" });
+      expect(args.providerOptions).toEqual({
+        openai: { store: false, reasoningEffort: "low" },
+      });
     }
   });
   test("blocks selections beyond the PDF page limit before making model calls", async () => {
@@ -1208,6 +1250,35 @@ describe("complete learning routes", () => {
     expect(
       (await owner.query(api.teaching.view, { lessonId }))?.lesson.phase,
     ).toBe("inventory");
+  });
+
+  test("automatically retries an expired scheduled step and bounds repeated timeouts", async () => {
+    const { owner } = fixture();
+    const ids = await seed(owner);
+    const lessonId = await owner.mutation(api.teaching.start, {
+      libraryGameId: ids.libraryGameId,
+      expansionIds: [],
+      language: "English",
+    });
+    for (let step = 0; step < 3; step++) {
+      const scheduledId = await owner.run((ctx) =>
+        ctx.scheduler.runAfter(60_000, internal.teachingGeneration.advance, {
+          lessonId,
+          step,
+        }),
+      );
+      await owner.mutation(internal.teachingInternal.watchdog, {
+        lessonId,
+        step,
+        scheduledId,
+        deadline: Date.now() - 1,
+      });
+      const lesson = await owner.run((ctx) => ctx.db.get(lessonId));
+      expect(lesson?.step).toBe(step + 1);
+      expect(lesson?.attempts).toBe(step + 1);
+      expect(lesson?.phase).toBe(step < 2 ? "inventory" : "failed");
+      expect(lesson?.topicCount).toBe(0);
+    }
   });
 
   test("a rulebook ending exactly on an inventory batch boundary is fully generated", async () => {

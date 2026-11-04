@@ -6,11 +6,11 @@ import { AI_POLICY_VERSION } from "./compliance";
 type ReadCtx = QueryCtx | MutationCtx;
 export const TEACH_VERSION = "5";
 export const MAX_LESSON_ITEMS = 1500;
-// A step can generate, review, repair and re-review (four 90s AI calls).
-export const TEACH_STEP_TIMEOUT_MS = 480_000;
+// Allow four bounded model calls plus preparation of source pages.
+export const TEACH_STEP_TIMEOUT_MS = 220_000;
+export const TEACH_WATCH_INTERVAL_MS = 10_000;
 
-// Observe crashes too: an out-of-memory termination cannot reach the action's
-// catch block. Check its scheduled job instead of showing a spinner for 8 minutes.
+// Scheduler failures can happen before the action reaches its catch block.
 export async function scheduleTeachingStep(
   ctx: MutationCtx,
   args: { lessonId: Id<"teachingLessons">; step: number },
@@ -22,7 +22,7 @@ export async function scheduleTeachingStep(
     args,
   );
   await ctx.scheduler.runAfter(
-    delay + 30_000,
+    delay + TEACH_WATCH_INTERVAL_MS,
     internal.teachingInternal.watchdog,
     {
       ...args,

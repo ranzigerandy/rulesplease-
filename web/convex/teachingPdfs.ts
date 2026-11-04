@@ -13,6 +13,7 @@ export async function teachingPdfParts(
   const parts: FilePart[] = [];
   let remoteBytes = 0;
   let totalBytes = 0;
+  const downloadDeadline = AbortSignal.timeout(20_000);
   for (const pdf of pdfs) {
     let data: URL | Uint8Array = new URL(pdf.url);
     // Storage URLs refer to immutable files. Legacy external URLs must be
@@ -20,7 +21,7 @@ export async function teachingPdfParts(
     // the provider, where a mutable URL could return a different revision).
     if (pdf.verifyHash || pdf.pageNumbers) {
       const response = await fetch(pdf.url, {
-        signal: AbortSignal.timeout(20_000),
+        signal: downloadDeadline,
       });
       if (!response.ok || !response.body)
         throw new Error("The original rulebook PDF is not available.");
