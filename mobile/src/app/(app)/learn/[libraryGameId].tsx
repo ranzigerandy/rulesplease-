@@ -846,7 +846,10 @@ function NativeCard({
       500,
     );
   }
-  const showSceneFirst = card.teachingRole === "context";
+  const [scene, ...details] =
+    card.teachingRole === "context" && card.coreSentence
+      ? card.paragraphs
+      : [undefined, ...card.paragraphs];
   const anchor = card.coreSentence ? (
     <View style={styles.anchor}>
       <Text selectable style={styles.anchorText}>
@@ -886,13 +889,17 @@ function NativeCard({
         >
           {card.title}
         </Text>
-        {!showSceneFirst && anchor}
-        {card.paragraphs.map((paragraph, index) => (
+        {scene && (
+          <Text selectable style={styles.cardParagraph}>
+            {scene}
+          </Text>
+        )}
+        {anchor}
+        {details.map((paragraph, index) => (
           <Text selectable key={index} style={styles.cardParagraph}>
             {paragraph}
           </Text>
         ))}
-        {showSceneFirst && anchor}
         {card.walkthrough && (
           <NativeWalkthrough walkthrough={card.walkthrough} />
         )}

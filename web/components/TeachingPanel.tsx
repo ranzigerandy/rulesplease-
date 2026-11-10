@@ -831,7 +831,10 @@ function ReadingCard({
       callbacks.current.onSaveScroll(node.scrollTop);
     };
   }, []);
-  const showSceneFirst = card.teachingRole === "context";
+  const [scene, ...details] =
+    card.teachingRole === "context" && card.coreSentence
+      ? card.paragraphs
+      : [undefined, ...card.paragraphs];
   const anchor = card.coreSentence ? (
     <div className="teach-anchor">
       <p>{card.coreSentence}</p>
@@ -866,13 +869,19 @@ function ReadingCard({
       <h1 tabIndex={-1} id={`card-${card._id}`}>
         {card.title}
       </h1>
-      {!showSceneFirst && anchor}
-      <div className="teach-card-copy">
-        {card.paragraphs.map((paragraph, index) => (
-          <p key={index}>{paragraph}</p>
-        ))}
-      </div>
-      {showSceneFirst && anchor}
+      {scene && (
+        <div className="teach-card-copy">
+          <p>{scene}</p>
+        </div>
+      )}
+      {anchor}
+      {details.length > 0 && (
+        <div className="teach-card-copy">
+          {details.map((paragraph, index) => (
+            <p key={index}>{paragraph}</p>
+          ))}
+        </div>
+      )}
       {card.walkthrough && (
         <WalkthroughContent walkthrough={card.walkthrough} />
       )}
