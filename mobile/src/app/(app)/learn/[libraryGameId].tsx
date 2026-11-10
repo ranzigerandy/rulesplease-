@@ -846,6 +846,14 @@ function NativeCard({
       500,
     );
   }
+  const showSceneFirst = card.teachingRole === "context";
+  const anchor = card.coreSentence ? (
+    <View style={styles.anchor}>
+      <Text selectable style={styles.anchorText}>
+        {card.coreSentence}
+      </Text>
+    </View>
+  ) : null;
   return (
     <View style={styles.cardContainer} {...pan.panHandlers}>
       <ScrollView
@@ -878,18 +886,13 @@ function NativeCard({
         >
           {card.title}
         </Text>
-        {card.coreSentence && (
-          <View style={styles.anchor}>
-            <Text selectable style={styles.anchorText}>
-              {card.coreSentence}
-            </Text>
-          </View>
-        )}
+        {!showSceneFirst && anchor}
         {card.paragraphs.map((paragraph, index) => (
           <Text selectable key={index} style={styles.cardParagraph}>
             {paragraph}
           </Text>
         ))}
+        {showSceneFirst && anchor}
         {card.walkthrough && (
           <NativeWalkthrough walkthrough={card.walkthrough} />
         )}

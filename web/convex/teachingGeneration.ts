@@ -25,6 +25,7 @@ import { cardInput } from "./teachingValidators";
 import {
   teachingVoice,
   teachingOpening,
+  teachingScene,
   teachingExamples,
   teachingRecap,
   teachingAnchor,
@@ -586,10 +587,24 @@ export async function reviewAndRepair<T>(
       findings = error.issues;
     }
   }
+  let openingGuidance = "";
+  if (
+    work.lesson.phase === "drafting" &&
+    !work.earlierCards?.length &&
+    usesTeachingApproach(work.lesson.version)
+  ) {
+    openingGuidance = teachingOpening;
+  } else if (
+    work.lesson.phase === "checking" &&
+    work.cards[0]?.order === 0 &&
+    work.cards[0].teachingRole === "context"
+  ) {
+    openingGuidance = `For the first context card only: ${teachingScene}`;
+  }
   const repaired = normalize(
     await model<T>(
       schema,
-      `${teachingVoice}\n${usesTeachingAids(work.lesson.version) ? (work.lesson.phase === "summary" ? teachingPlayGuide : work.lesson.phase === "drafting" ? draftAidsInstructions(work) : "") : ""}\n${work.lesson.phase === "drafting" && !work.earlierCards?.length && usesTeachingApproach(work.lesson.version) ? teachingOpening : ""}\nWrite in ${work.lesson.language}. Repair the rejected candidate using EVERY source-anchored finding. ${task} Keep supported details, source IDs, assigned chapters and topic mappings. Use ONLY the supplied source evidence. For inventory, return the complete repaired inventory, preserving all covered passages. For drafting, keep all valid cards, add cards for every missing topic ID in validationError, and return the entire repaired batch. Explain only the top-level topics. For final checking, return exactly the same number of cards in the same order and chapters; keep their topic mappings. Return the same output structure as the candidate.`,
+      `${teachingVoice}\n${usesTeachingAids(work.lesson.version) ? (work.lesson.phase === "summary" ? teachingPlayGuide : work.lesson.phase === "drafting" ? draftAidsInstructions(work) : "") : ""}\n${openingGuidance}\nWrite in ${work.lesson.language}. Repair the rejected candidate using EVERY source-anchored finding. ${task} Keep supported details, source IDs, assigned chapters and topic mappings. Use ONLY the supplied source evidence. For inventory, return the complete repaired inventory, preserving all covered passages. For drafting, keep all valid cards, add cards for every missing topic ID in validationError, and return the entire repaired batch. Explain only the top-level topics. For final checking, return exactly the same number of cards in the same order and chapters; keep their topic mappings. Return the same output structure as the candidate.`,
       promptData({
         candidate,
         findings,
