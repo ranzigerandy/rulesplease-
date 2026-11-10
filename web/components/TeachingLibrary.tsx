@@ -6,9 +6,10 @@ import {
   Unauthenticated,
   useQuery,
 } from "convex/react";
-import { ArrowRight, BookOpen, LoaderCircle, Search } from "lucide-react";
+import { ArrowRight, BookOpen, Search } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { MascotLoading } from "./MascotLoading";
 import { GameCover } from "./GameCover";
 import { TeachingFrame, TeachingHeader } from "./TeachingChrome";
 import { useState } from "react";
@@ -24,10 +25,7 @@ export function TeachingLibrary() {
   return (
     <>
       <AuthLoading>
-        <div className="teach-loading" role="status">
-          <LoaderCircle className="spin" />
-          Connecting your library…
-        </div>
+        <div className="teach-loading"><MascotLoading label="Connecting your library…" /></div>
       </AuthLoading>
       <Unauthenticated>
         <div className="teach-loading">
@@ -87,9 +85,7 @@ function TeachingLibraryContent() {
             </p>
           )}
           {!library ? (
-            <p className="teach-library-loading" role="status">
-              <LoaderCircle className="spin" size={20} /> Loading your games…
-            </p>
+            <MascotLoading label="Loading your games…" compact />
           ) : (
             <>
               <p className="teach-library-count" role="status">

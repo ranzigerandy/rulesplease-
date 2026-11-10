@@ -1,3 +1,4 @@
+import { MascotLoading } from "@/components/mascot-loading";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -9,6 +10,6 @@ export default function RulebookViewerScreen() {
   const params = useLocalSearchParams<{ url: string; page?: string; title?: string }>();
   const initialPage = Math.max(1, Number(params.page ?? 1));
   const [page, setPage] = useState(initialPage);
-  return <Screen scroll={false} contentStyle={styles.screen}><Header title={params.title ?? "Rulebook"} /><View style={styles.viewer}><Pdf source={{ uri: params.url, cache: true }} page={initialPage} onPageChanged={setPage} enablePaging style={styles.pdf} /></View><Text style={styles.page}>Page {page}</Text></Screen>;
+  return <Screen scroll={false} contentStyle={styles.screen}><Header title={params.title ?? "Rulebook"} /><View style={styles.viewer}><Pdf source={{ uri: params.url, cache: true }} page={initialPage} onPageChanged={setPage} renderActivityIndicator={(progress) => <MascotLoading label="Opening rulebook…" pose="reading" progress={progress > 0 && progress < 1 ? progress * 100 : undefined} compact />} enablePaging style={styles.pdf} /></View><Text style={styles.page}>Page {page}</Text></Screen>;
 }
 const styles = StyleSheet.create({ screen: { paddingBottom: 8 }, viewer: { flex: 1, overflow: "hidden", borderRadius: 16, backgroundColor: colors.surface }, pdf: { flex: 1, width: "100%", backgroundColor: colors.surface }, page: { textAlign: "center", paddingVertical: 10, color: colors.muted, fontWeight: "700" } });

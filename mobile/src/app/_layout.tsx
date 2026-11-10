@@ -1,3 +1,4 @@
+import { LoadingScreen } from "@/components/mascot-loading";
 import { useAuth } from "@clerk/clerk-expo";
 import * as Notifications from "expo-notifications";
 import { Stack, router } from "expo-router";
@@ -20,7 +21,7 @@ function Navigation() {
     });
     return () => subscription.remove();
   }, []);
-  if (!isLoaded) return null;
+  if (!isLoaded) return <LoadingScreen label="Connecting your secure library…" />;
   return <Stack screenOptions={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: "#FFFFFF" } }}>
     <Stack.Screen name="sso-callback" options={{ animation: "none" }} />
     <Stack.Protected guard={!isSignedIn}><Stack.Screen name="(auth)" /></Stack.Protected>

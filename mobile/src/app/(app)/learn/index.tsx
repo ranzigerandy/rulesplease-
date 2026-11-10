@@ -1,9 +1,9 @@
+import { MascotLoading } from "@/components/mascot-loading";
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { router } from "expo-router";
 import { ArrowRight, Search } from "lucide-react-native";
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -62,10 +62,7 @@ export default function TeachingLibraryScreen() {
         </Text>
       )}
       {!library ? (
-        <ActivityIndicator
-          accessibilityLabel="Loading your games"
-          color={colors.text}
-        />
+        <MascotLoading label="Loading your games…" compact />
       ) : (
         <>
           <Text style={styles.count} accessibilityLiveRegion="polite">

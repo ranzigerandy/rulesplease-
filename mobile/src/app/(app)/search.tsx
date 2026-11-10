@@ -1,3 +1,4 @@
+import { MascotLoading } from "@/components/mascot-loading";
 import { api, type CatalogGame, type CatalogSearchResponse } from "@rulesplease/shared";
 import { router } from "expo-router";
 import { useMutation } from "convex/react";
@@ -13,13 +14,14 @@ export default function SearchScreen() {
   const registerPush = usePushRegistration();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CatalogGame[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [searchingQuery, setSearchingQuery] = useState<string | null>(null);
+  const loading = searchingQuery === query;
   const [adding, setAdding] = useState<number | null>(null);
   useEffect(() => {
     if (query.trim().length < 2) return;
     const controller = new AbortController();
     const timeout = setTimeout(async () => {
-      setLoading(true);
+      setSearchingQuery(query);
       try {
         const base = process.env.EXPO_PUBLIC_CATALOG_BASE_URL?.replace(/\/$/, "") ?? "https://www.rulesplease.com";
         const response = await fetch(`${base}/api/v1/catalog/search?q=${encodeURIComponent(query.trim())}`, { signal: controller.signal });
@@ -27,7 +29,7 @@ export default function SearchScreen() {
         if (!response.ok) throw new Error(payload.error ?? "Catalog search failed");
         setResults(payload.results);
       } catch (error) { if (!controller.signal.aborted) Alert.alert("Search failed", error instanceof Error ? error.message : "Try again."); }
-      finally { if (!controller.signal.aborted) setLoading(false); }
+      finally { if (!controller.signal.aborted) setSearchingQuery(null); }
     }, 320);
     return () => { clearTimeout(timeout); controller.abort(); };
   }, [query]);
@@ -46,7 +48,9 @@ export default function SearchScreen() {
   return <Screen>
     <Header title="New rules chat" />
     <Text style={styles.title}>What are you playing?</Text><Text style={styles.subtitle}>Choose one game to start a cited rules chat.</Text>
-    <View style={styles.search}><Search color={colors.muted} size={21} /><TextInput autoFocus placeholder="Search games" value={query} onChangeText={setQuery} style={styles.input} returnKeyType="search" />{loading ? <ActivityIndicator color={colors.text} /> : null}</View>
+    <View style={styles.search}><Search color={colors.muted} size={21} /><TextInput autoFocus placeholder="Search games" value={query} onChangeText={setQuery} style={styles.input} returnKeyType="search" /></View>
+    {loading && query.trim().length >= 2 ? <MascotLoading label="Searching the game catalogue…" pose="searching" compact /> : null}
+    {adding !== null ? <MascotLoading label="Opening your game…" compact /> : null}
     {query.length >= 2 ? <Text style={styles.label}>Search results</Text> : null}
     {visibleResults.map((game) => <Pressable key={game.id} onPress={() => choose(game)} style={styles.result}>
       <GameCover uri={thumbnailUrl(game.id)} size={54} /><View style={styles.copy}><Text style={styles.name}>{game.name}</Text><Text style={styles.meta}>{[game.year, game.rank ? `BGG rank ${game.rank}` : null].filter(Boolean).join(" · ")}</Text></View><View style={styles.plus}>{adding === game.id ? <ActivityIndicator color={colors.text} /> : <Plus color={colors.text} size={23} />}</View>

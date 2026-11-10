@@ -1,7 +1,9 @@
+import { MascotLoading } from "@/components/mascot-loading";
 import {
   api,
   TEACHING_LANGUAGES,
   TEACHING_PHASES,
+  lessonPreparationProgress,
   teachingLanguage,
   teachingFailure,
   teachingAids,
@@ -139,7 +141,7 @@ export default function TeachScreen() {
         }
       />
       {!setup ? (
-        <ActivityIndicator accessibilityLabel="Opening your lesson" />
+        <MascotLoading label="Opening your lesson…" pose="reading" />
       ) : (
         <>
           <Text style={styles.introTitle} accessibilityRole="header">
@@ -258,20 +260,12 @@ export default function TeachScreen() {
                 </View>
               )}
               {preparing ? (
-                <View style={styles.notice} accessibilityLiveRegion="polite">
-                  <ActivityIndicator color={colors.accent} />
-                  <Text style={styles.sectionTitle}>
-                    {TEACHING_PHASES[data.lesson.phase]}
-                  </Text>
-                  <Text style={styles.body}>
-                    {data.lesson.topicCount} rule topics organised ·{" "}
-                    {data.lesson.cardCount} cards prepared
-                  </Text>
-                  <Text style={styles.small}>
-                    You can leave this screen. Preparation continues in the
-                    background.
-                  </Text>
-                </View>
+                <MascotLoading
+                  label={TEACHING_PHASES[data.lesson.phase]}
+                  pose={data.lesson.phase === "inventory" ? "reading" : "thinking"}
+                  detail={`${data.lesson.topicCount} rule topics organised · ${data.lesson.cardCount} cards prepared. A full lesson can take a few minutes. You can leave while we work.`}
+                  {...lessonPreparationProgress(data.lesson.phase)}
+                />
               ) : (
                 <View style={styles.startActions}>
                   {data?.lesson.phase === "failed" && (
@@ -1188,10 +1182,8 @@ function NativeQuestions({
             )}
           </View>
         ))}
-        {busy && (
-          <Text style={styles.small} accessibilityLiveRegion="polite">
-            Checking your rulebooks…
-          </Text>
+        {(busy || messages === undefined) && (
+          <MascotLoading label={busy ? "Checking your rulebooks…" : "Loading your questions…"} pose="thinking" compact />
         )}
       </ScrollView>
       <View style={styles.questionComposer}>

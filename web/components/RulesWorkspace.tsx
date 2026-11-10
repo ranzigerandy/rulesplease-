@@ -1,5 +1,7 @@
 "use client";
 
+import { MascotLoading } from "./MascotLoading";
+import { rulebookLoadingPose } from "../../packages/shared/src/loadingProgress";
 import { GameCover, GameMonogram } from "@/components/GameCover";
 import { MessageResponse } from "@/components/ai-elements/message";
 import { RulebookViewer, type RulebookViewerSource } from "@/components/RulebookViewer";
@@ -380,6 +382,7 @@ function WorkspaceContent({ initialGameId }: { initialGameId?: string }) {
   if (!aiConsent.granted) {
     return <AiConsentPanel policyVersion={aiConsent.policyVersion} onAccept={() => acceptAiConsent({})} />;
   }
+  if (library === undefined) return <WorkspaceAuthNotice message="Loading your game library…" />;
   return (
     <>
       <Toaster theme="light" />
@@ -456,6 +459,7 @@ function WorkspaceContent({ initialGameId }: { initialGameId?: string }) {
                 <ChatPanel
                   teachHref={teachingEnabled ? `/product/learn/${selected._id}` : undefined}
                   gameName={selected.game?.name ?? "this game"}
+                  loadingHistory={existingThread === undefined || Boolean(activeChatThreadId && messagesResult === undefined)}
                   messages={messagesResult?.page ?? []}
                   citations={citations ?? []}
                   question={question}
@@ -630,7 +634,7 @@ function PdfFirstPagePreview({ url, label }: { url: string; label: string }) {
 
   return (
     <div className="approval-pdf-preview">
-      {loading && <div className="approval-preview-state"><LoaderCircle className="spin" />Loading first page…</div>}
+      {loading && <div className="approval-preview-state"><MascotLoading label="Loading first page…" pose="reading" compact /></div>}
       {error && <div className="approval-preview-state"><FileText />First-page preview unavailable</div>}
       <canvas ref={canvasRef} aria-label={label} className={loading || error ? "is-hidden" : ""} />
       <span>Page 1 preview</span>
@@ -668,6 +672,7 @@ function RulebookApproval({ game, source, rulebook, previewPdfUrl, approving, re
         <div><dt>File</dt><dd>{formatFileSize(source.fileSize)}</dd></div>
       </dl>
       <a className="approval-preview" href={previewPdfUrl ?? source.url} target="_blank" rel="noreferrer">Preview rulebook <ExternalLink /></a>
+      {(approving || replacing) && <MascotLoading label={replacing ? "Looking for another rulebook…" : "Confirming your rulebook…"} pose={replacing ? "searching" : "reading"} compact />}
       <div className="approval-actions">
         <button type="button" className="approval-confirm" disabled={approving || replacing} onClick={onApprove}>
           {approving ? <LoaderCircle className="spin" /> : <ShieldCheck />}
@@ -697,6 +702,7 @@ function RulebookRetry({ gameName, reason, replacing, onReplace, onImport }: { g
           <p>{reason}</p>
         </div>
       )}
+      {replacing && <MascotLoading label="Looking for another rulebook…" pose="searching" compact />}
       <div className="approval-actions retry-actions">
         <button type="button" className="approval-confirm" disabled={replacing} onClick={onReplace}>
           {replacing ? <LoaderCircle className="spin" /> : <RefreshCw />}
@@ -789,8 +795,10 @@ function ExpansionPicker({ excludeGameId, onAdd }: { excludeGameId?: number; onA
 
   return <div className="rulebook-expansion-picker">
     {selected.length > 0 && <div className="selected-expansions">{selected.map((expansion) => <button type="button" key={expansion.id} onClick={() => toggle(expansion)}>{expansion.name}<X /></button>)}</div>}
-    <label className="expansion-search"><Search /><Input type="search" placeholder="Search expansions" value={query} onChange={(event) => setQuery(event.target.value)} />{loading && <LoaderCircle className="spin" />}</label>
+    <label className="expansion-search"><Search /><Input type="search" placeholder="Search expansions" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+    {loading && query.trim().length >= 2 && <MascotLoading label="Searching expansions…" pose="searching" compact />}
     {visibleResults.map((expansion) => { const isSelected = selected.some((item) => item.id === expansion.id); return <button type="button" className="expansion-result" key={expansion.id} onClick={() => toggle(expansion)}><SearchResultCover game={expansion} /><span><strong>{expansion.name}</strong><small>{expansion.year ?? "Expansion"}</small></span><i className={isSelected ? "selected" : ""}>{isSelected ? <Check /> : <Plus />}</i></button>; })}
+    {adding && <MascotLoading label="Adding expansions…" compact />}
     <Button type="button" className="add-expansions-submit" disabled={adding || selected.length === 0} onClick={async () => { setAdding(true); try { await onAdd(selected); } finally { setAdding(false); } }}>{adding ? <LoaderCircle className="spin" /> : <Plus />}{adding ? "Adding…" : selected.length === 0 ? "Add expansions" : `Add ${selected.length} expansion${selected.length === 1 ? "" : "s"}`}</Button>
   </div>;
 }
@@ -798,7 +806,9 @@ function ExpansionPicker({ excludeGameId, onAdd }: { excludeGameId?: number; onA
 function WorkspaceAuthNotice({ message, children }: { message: string; children?: React.ReactNode }) {
   return (
     <main className="centered-notice">
-      <div className="notice-card"><Dices /><h1>Rules Please!</h1><p>{message}</p>{children}</div>
+      <div className="notice-card">
+        {children ? <><Dices /><h1>Rules Please!</h1><p>{message}</p>{children}</> : <MascotLoading label={message} />}
+      </div>
     </main>
   );
 }
@@ -944,7 +954,7 @@ function CitationPassage({ quote, answer }: { quote: string; answer: string }) {
   return <blockquote>{before}{highlight && <strong>{highlight}</strong>}{after}</blockquote>;
 }
 
-function ChatPanel({ gameName, messages, citations, question, setQuestion, asking, submit, showCitations, onReportCitation, teachHref }: { teachHref?: string; gameName: string; messages: ChatMessage[]; citations: CitationRecord[]; question: string; setQuestion: (value: string) => void; asking: boolean; submit: () => Promise<void>; showCitations: boolean; onReportCitation: (report: { agentMessageId: string; question: string; answer: string; citations: CitationRecord[] }) => Promise<void> }) {
+function ChatPanel({ gameName, loadingHistory = false, messages, citations, question, setQuestion, asking, submit, showCitations, onReportCitation, teachHref }: { teachHref?: string; gameName: string; loadingHistory?: boolean; messages: ChatMessage[]; citations: CitationRecord[]; question: string; setQuestion: (value: string) => void; asking: boolean; submit: () => Promise<void>; showCitations: boolean; onReportCitation: (report: { agentMessageId: string; question: string; answer: string; citations: CitationRecord[] }) => Promise<void> }) {
   const [expandedCitationMessageId, setExpandedCitationMessageId] = useState<string | null>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
   const messageStreamRef = useRef<HTMLDivElement>(null);
@@ -1024,7 +1034,9 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
   return (
     <div className="chat-layout" ref={layoutRef}>
       <div className="message-stream" ref={messageStreamRef}>
-        {messages.length === 0 ? (
+        {loadingHistory ? (
+          <div className="chat-empty"><MascotLoading label="Opening your rules chat…" /></div>
+        ) : messages.length === 0 ? (
           <div className="chat-empty">
             <Image className="chat-empty-mascot" src="/rulesplease-mascot-thinking.png" alt="" width={88} height={88} priority />
             <h2>Ask about {gameName}</h2>
@@ -1095,7 +1107,7 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
             </article>
           );
         })}
-        {asking && <article className="message-bubble assistant pending"><LoaderCircle className="spin" /><p>Reading the rulebook…</p></article>}
+        {asking && <article className="message-bubble assistant pending"><MascotLoading label="Reading the rulebook…" pose="thinking" compact /></article>}
       </div>
       <form className="question-composer" ref={composerRef} onFocusCapture={keepComposerAboveKeyboard} onSubmit={(event) => { event.preventDefault(); void submit(); }}>
         <Textarea ref={questionInputRef} rows={1} value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask about the rules" onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submit(); } }} />
@@ -1137,24 +1149,22 @@ function ChatPanel({ gameName, messages, citations, question, setQuestion, askin
 
 function ProcessingPanel({ game }: { game: LibraryRow }) {
   const needsAttention = game.status === "failed" || game.status === "review_required";
-  const isDownloadingRulebook = game.status === "downloading_rulebook";
   return (
     <div className="processing-panel">
-      <div className={`process-icon${needsAttention ? "" : " is-mascot"}`}>
-        {needsAttention ? <CircleAlert /> : (
-          <Image
-            src={isDownloadingRulebook ? "/rulesplease-mascot-downloading.png" : "/rulesplease-mascot-searching.png"}
-            alt={isDownloadingRulebook ? "Rules Please mascot downloading a rulebook" : "Rules Please mascot searching for a rulebook"}
-            width={88}
-            height={88}
-            priority
-          />
-        )}
-      </div>
-      <h2>{game.statusLabel}</h2>
-      <p>{game.statusMessage}</p>
-      <div className="progress-track"><span style={{ width: `${Math.min(100, Math.max(0, game.progress))}%` }} /></div>
-      <small>{game.progress}% complete</small>
+      {needsAttention ? (
+        <>
+          <div className="process-icon"><CircleAlert /></div>
+          <h2>{game.statusLabel}</h2>
+          <p>{game.statusMessage}</p>
+        </>
+      ) : (
+        <MascotLoading
+          label={game.statusLabel}
+          detail={game.statusMessage + " This can take a few minutes. You can leave this screen while we work."}
+          pose={rulebookLoadingPose(game.status)}
+          progress={game.status === "queued" ? undefined : game.progress}
+        />
+      )}
     </div>
   );
 }
@@ -1330,6 +1340,7 @@ function ChatActionsSheet({ chat, onClose, onArchive }: { chat: LibraryRow; onCl
 }
 
 function NewChatWorkspace({ library, query, setQuery, results, searching, runSearch, onBack, onSelect, onAdd }: { library: LibraryRow[]; query: string; setQuery: (value: string) => void; results: GameSearchResult[]; searching: boolean; runSearch: () => Promise<void>; onBack: () => void; onSelect: (id: Id<"libraryGames">) => void; onAdd: (game: GameSearchResult) => Promise<void> }) {
+  const [adding, setAdding] = useState(false);
   return (
     <div className="subscreen">
       <ScreenHeader title="New rules chat" onBack={onBack} />
@@ -1344,6 +1355,7 @@ function NewChatWorkspace({ library, query, setQuery, results, searching, runSea
           <Input id="catalog-search" autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search the BGG catalog…" />
           <Button size="icon" aria-label="Search catalog" disabled={searching || query.trim().length < 2}>{searching ? <LoaderCircle className="spin" /> : <Search />}</Button>
         </form>
+        {adding ? <MascotLoading label="Opening your game…" compact /> : searching && <MascotLoading label="Searching the game catalogue…" pose="searching" compact />}
         {results.length > 0 && (
           <section className="catalog-results">
             <div className="catalog-results-heading"><h2>Search results</h2></div>
@@ -1352,7 +1364,7 @@ function NewChatWorkspace({ library, query, setQuery, results, searching, runSea
                 <SearchResultCover game={game} />
                 <span><strong>{game.name}</strong><small>{game.year ?? "Year unknown"}{game.rank ? ` · BGG rank ${game.rank}` : ""}</small></span>
                 <div className="catalog-result-actions">
-                  <Button variant="outline" aria-label={`Add ${game.name}`} onClick={() => void onAdd(game)}><Plus /></Button>
+                  <Button variant="outline" aria-label={`Add ${game.name}`} disabled={adding} onClick={async () => { setAdding(true); try { await onAdd(game); } finally { setAdding(false); } }}><Plus /></Button>
                 </div>
               </article>
             ))}
@@ -1446,12 +1458,14 @@ function RulebookImportSheet({ game, onClose, onImport }: { game: GameSearchResu
           <section className="import-expansions" aria-labelledby="import-expansions-title">
             <div><h3 id="import-expansions-title">Add expansions</h3><p>Select one or more BGG expansions. Each gets its own rulebook and rules chat.</p></div>
             {expansions.length > 0 && <div className="selected-expansions">{expansions.map((expansion) => <button type="button" key={expansion.id} onClick={() => toggleExpansion(expansion)}>{expansion.name}<X /></button>)}</div>}
-            <label className="expansion-search"><Search /><Input type="search" placeholder="Search expansions" value={expansionQuery} onChange={(event) => setExpansionQuery(event.target.value)} />{expansionLoading && <LoaderCircle className="spin" />}</label>
+            <label className="expansion-search"><Search /><Input type="search" placeholder="Search expansions" value={expansionQuery} onChange={(event) => setExpansionQuery(event.target.value)} /></label>
+            {expansionLoading && expansionQuery.trim().length >= 2 && <MascotLoading label="Searching expansions…" pose="searching" compact />}
             {visibleExpansionResults.map((expansion) => {
               const selected = expansions.some((item) => item.id === expansion.id);
               return <button type="button" className="expansion-result" key={expansion.id} onClick={() => toggleExpansion(expansion)}><SearchResultCover game={expansion} /><span><strong>{expansion.name}</strong><small>{expansion.year ?? "Expansion"}</small></span><i className={selected ? "selected" : ""}>{selected ? <Check /> : <Plus />}</i></button>;
             })}
           </section>
+          {importing && <MascotLoading label={method === "file" ? "Uploading your rulebook…" : "Checking the rulebook link…"} pose="reading" compact />}
           <p className="import-safety-note"><ShieldCheck />We verify the game and edition before the chat opens.</p>
           <Button className="import-submit" disabled={importing || (method === "file" ? !file : !url.trim())}>
             {importing ? <LoaderCircle className="spin" /> : <FileUp />}

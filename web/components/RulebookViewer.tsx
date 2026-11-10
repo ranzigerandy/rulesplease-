@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowLeft, ChevronLeft, ChevronRight, ExternalLink, LoaderCircle, SearchCheck } from "lucide-react";
+import { MascotLoading } from "./MascotLoading";
+import { ArrowLeft, ChevronLeft, ChevronRight, ExternalLink, SearchCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy, TextItem } from "pdfjs-dist/types/src/display/api";
 
@@ -200,7 +201,7 @@ export function RulebookViewer({ source, onClose }: { source: RulebookViewerSour
           <small>{highlightFound ? "Highlighted on the page" : "Showing the cited page"}</small>
         </aside>
         <div className="rulebook-page-scroll">
-          {loading && <div className="rulebook-viewer-status"><LoaderCircle className="spin" />Locating the passage…</div>}
+          {loading && <div className="rulebook-viewer-status"><MascotLoading label="Locating the passage…" pose="reading" compact /></div>}
           {error && <div className="rulebook-viewer-status error">{error}</div>}
           <div className="rulebook-page" hidden={Boolean(error)}>
             <canvas ref={canvasRef} />

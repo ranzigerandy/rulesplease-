@@ -1,3 +1,4 @@
+import { MascotLoading } from "@/components/mascot-loading";
 import { useSignIn, useSSO } from "@clerk/clerk-expo";
 import { Image } from "expo-image";
 import * as WebBrowser from "expo-web-browser";
@@ -52,7 +53,9 @@ export default function SignInScreen() {
   }
 
   return <Screen contentStyle={styles.screen}>
-    <Image source={require("@/assets/images/rulesplease-mascot.png")} style={styles.mascot} contentFit="contain" />
+    {busy ? <MascotLoading label="Checking your sign-in…" /> : (
+      <Image source={require("@/assets/images/rulesplease-mascot.png")} style={styles.mascot} contentFit="contain" />
+    )}
     <Text style={styles.title}>Rules, without the rulebook hunt.</Text>
     <Text style={styles.subtitle}>Sign in to use your shared game library on every device.</Text>
     <View style={styles.form}>

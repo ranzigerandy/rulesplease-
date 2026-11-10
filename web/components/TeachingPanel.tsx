@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { MascotLoading } from "./MascotLoading";
+import { lessonPreparationProgress } from "../../packages/shared/src/loadingProgress";
 import { TeachingFrame, TeachingHeader } from "./TeachingChrome";
 import type { CoverGame } from "./GameCover";
 import {
@@ -72,10 +74,7 @@ export function TeachingPanel({
   return (
     <>
       <AuthLoading>
-        <div className="teach-loading" role="status">
-          <LoaderCircle className="spin" />
-          Connecting your learning space…
-        </div>
+        <div className="teach-loading"><MascotLoading label="Connecting your learning space…" pose="reading" /></div>
       </AuthLoading>
       <Unauthenticated>
         <div className="teach-loading">
@@ -161,10 +160,7 @@ function TeachingContent({
   const back = `/product?game=${libraryGameId}`;
   if (!setup)
     return (
-      <div className="teach-loading" role="status">
-        <LoaderCircle className="spin" />
-        Opening your learning space…
-      </div>
+      <div className="teach-loading"><MascotLoading label="Opening your learning space…" pose="reading" /></div>
     );
   if (reading && data?.lesson.phase === "ready")
     return (
@@ -276,24 +272,12 @@ function TeachingContent({
                 )}
               </div>
               {preparing ? (
-                <div
-                  className="teach-preparing"
-                  role="status"
-                  aria-live="polite"
-                >
-                  <LoaderCircle className="spin" />
-                  <div>
-                    <strong>{TEACHING_PHASES[data.lesson.phase]}</strong>
-                    <p>
-                      {data.lesson.topicCount} rule topics organised ·{" "}
-                      {data.lesson.cardCount} cards prepared
-                    </p>
-                    <small>
-                      You can leave this screen. Preparation continues in the
-                      background.
-                    </small>
-                  </div>
-                </div>
+                <MascotLoading
+                  label={TEACHING_PHASES[data.lesson.phase]}
+                  pose={data.lesson.phase === "inventory" ? "reading" : "thinking"}
+                  detail={`${data.lesson.topicCount} rule topics organised · ${data.lesson.cardCount} cards prepared. A full lesson can take a few minutes. You can leave while we work.`}
+                  {...lessonPreparationProgress(data.lesson.phase)}
+                />
               ) : (
                 <>
                   {data?.lesson.phase === "failed" && (
@@ -1146,7 +1130,7 @@ function QuestionPanel({
             )}
           </article>
         ))}
-        {busy && <p role="status">Checking your rulebooks…</p>}
+        {(busy || messages === undefined) && <MascotLoading label={busy ? "Checking your rulebooks…" : "Loading your questions…"} pose="thinking" compact />}
       </div>
       <form
         onSubmit={(event) => {

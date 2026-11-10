@@ -1,3 +1,4 @@
+import { MascotLoading } from "@/components/mascot-loading";
 import { api } from "@rulesplease/shared";
 import { useMutation } from "convex/react";
 import { Bell, Bot, ExternalLink, FileText, ShieldCheck } from "lucide-react-native";
@@ -27,6 +28,7 @@ export default function ConsentScreen() {
       <View style={styles.card}><ShieldCheck color={colors.text} size={22} /><View style={styles.copy}><Text style={styles.cardTitle}>You stay in control</Text><Text style={styles.body}>AI can be wrong. Check citations and the original page. You can withdraw consent in Settings.</Text></View></View>
     </View>
     <Pressable onPress={() => Linking.openURL(`${APP_URL}/privacy`)} style={styles.link}><Text style={styles.linkText}>Read the Privacy Policy</Text><ExternalLink color={colors.accent} size={14} /></Pressable>
+    {busy ? <MascotLoading label="Saving your privacy choice…" compact /> : null}
     <PrimaryButton loading={busy} onPress={confirm}>I agree and want to continue</PrimaryButton>
     <Text style={styles.note}>Without consent, AI search, uploads and new answers remain unavailable.</Text>
   </Screen>;

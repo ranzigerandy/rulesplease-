@@ -1,10 +1,11 @@
+import { MascotLoading } from "@/components/mascot-loading";
 import { api, type CatalogGame, type CatalogSearchResponse, type Id } from "@rulesplease/shared";
 import { useLocalSearchParams } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { Check, FileText, Languages, Plus, RefreshCw, Search, ShieldCheck, Trash2, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Header, PrimaryButton, Screen, thumbnailUrl } from "@/components/ui";
 import { ImportRulebook } from "@/components/import-rulebook";
@@ -18,7 +19,8 @@ export default function RulebookInfoScreen() {
   const [importOpen, setImportOpen] = useState(false);
   const [expansionsOpen, setExpansionsOpen] = useState(false);
   const removeExpansion = useMutation(api.library.removeExpansion);
-  if (!row?.game) return <Screen contentStyle={styles.center}><ActivityIndicator color={colors.text} /></Screen>;
+  if (library === undefined) return <Screen contentStyle={styles.center}><MascotLoading label="Opening rulebook details…" pose="reading" /></Screen>;
+  if (!row?.game) return <Screen contentStyle={styles.center}><Text>This game is no longer in your library.</Text></Screen>;
   const source = row.rulebookSource;
   return <Screen><Header title="Rulebook info" coverUrl={thumbnailUrl(row.game.bggId)} />
     <Text style={styles.title}>{row.game.name}</Text><Text style={styles.subtitle}>The exact document used for every answer in this chat.</Text>
@@ -68,8 +70,10 @@ function ExpansionPicker({ visible, libraryGameId, baseGameId, onClose }: { visi
     <View style={styles.sheetHeader}><View><Text style={styles.sheetEyebrow}>YOUR COLLECTION</Text><Text style={styles.sheetTitle}>Add expansions</Text></View><Pressable onPress={onClose} style={styles.close}><X color={colors.text} size={24} /></Pressable></View>
     <Text style={styles.sheetBody}>Search BoardGameGeek and select one or more expansions. Each receives its own rulebook and rules chat.</Text>
     {selected.length > 0 ? <View style={styles.chips}>{selected.map((expansion) => <Pressable key={expansion.id} onPress={() => toggle(expansion)} style={styles.chip}><Text numberOfLines={1} style={styles.chipText}>{expansion.name}</Text><X size={15} color={colors.text} /></Pressable>)}</View> : null}
-    <View style={styles.search}><Search color={colors.muted} size={19} /><TextInput autoFocus placeholder="Search expansions" value={query} onChangeText={setQuery} style={styles.input} />{loading ? <ActivityIndicator color={colors.accent} /> : null}</View>
+    <View style={styles.search}><Search color={colors.muted} size={19} /><TextInput autoFocus placeholder="Search expansions" value={query} onChangeText={setQuery} style={styles.input} /></View>
+    {loading && query.trim().length >= 2 ? <MascotLoading label="Searching expansions…" pose="searching" compact /> : null}
     {visibleResults.map((expansion) => { const isSelected = selected.some((item) => item.id === expansion.id); return <Pressable key={expansion.id} onPress={() => toggle(expansion)} style={styles.result}><View style={styles.resultCopy}><Text numberOfLines={1} style={styles.resultName}>{expansion.name}</Text><Text style={styles.resultMeta}>{expansion.year ?? "Expansion"}</Text></View><View style={[styles.select, isSelected && styles.selectActive]}>{isSelected ? <Check color="#FFF" size={17} /> : <Plus color={colors.text} size={18} />}</View></Pressable>; })}
+    {adding ? <MascotLoading label="Adding expansions…" compact /> : null}
     <PrimaryButton disabled={selected.length === 0} loading={adding} onPress={submit}>{selected.length === 0 ? "Add expansions" : `Add ${selected.length} expansion${selected.length === 1 ? "" : "s"}`}</PrimaryButton>
   </ScrollView></SafeAreaView></View></Modal>;
 }

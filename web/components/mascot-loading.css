@@ -1,0 +1,54 @@
+.mascot-loading {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 9px;
+  width: min(100%, 360px);
+  margin-inline: auto;
+  padding: 8px 12px;
+  text-align: center;
+  color: var(--color-text);
+}
+.mascot-loading.is-compact { gap: 6px; }
+.mascot-loading picture, .mascot-loading picture img { display: block; }
+.mascot-loading-copy { display: grid; gap: 4px; }
+.mascot-loading .mascot-loading-label,
+.mascot-loading .mascot-loading-detail,
+.mascot-loading .mascot-loading-value { margin: 0; }
+.mascot-loading-label { font-size: 15px; line-height: 1.45; font-weight: 650; }
+.mascot-loading-detail, .mascot-loading-value {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.mascot-loading-track {
+  width: min(100%, 230px);
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-surface-subtle, #eaeae8);
+}
+.mascot-loading-track span {
+  display: block;
+  height: 100%;
+  background: var(--color-app-action, #65bdc2);
+  border-radius: inherit;
+  transition: width 240ms ease-out;
+}
+.mascot-loading-track.is-indeterminate span {
+  width: 35%;
+  animation: mascot-loading-sweep 1.9s ease-in-out infinite;
+}
+.mascot-loading[data-playing="false"] .mascot-loading-track.is-indeterminate span {
+  animation-play-state: paused;
+  margin-inline: auto;
+}
+.processing-panel > .mascot-loading .mascot-loading-label { font-size: 23px; }
+@keyframes mascot-loading-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(286%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mascot-loading-track span { transition: none; }
+  .mascot-loading-track.is-indeterminate span { animation: none; margin-inline: auto; }
+}
