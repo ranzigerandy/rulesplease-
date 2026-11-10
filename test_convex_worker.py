@@ -68,6 +68,50 @@ class ConvexWorkerFlowTests(unittest.TestCase):
         self.assertEqual(convex_worker.app_server.detect_rulebook_language([{"text": english}]), "en")
         self.assertEqual(convex_worker.app_server.detect_rulebook_language([{"text": "Kalypso"}]), "und")
 
+    def test_web_search_starts_only_after_a_bgg_download_fails(self):
+        game = {"bggId": 456332, "name": "High Moon"}
+        bgg = {"url": "https://boardgamegeek.com/file/download/460629", "label": "High Moon Rulebook - ENG"}
+        web = {"url": "https://example.com/high-moon-rules.pdf", "label": "High Moon rulebook"}
+        events = []
+
+        def web_search(*args, **kwargs):
+            events.append("web search")
+            return [web]
+
+        def download(candidate, *args, **kwargs):
+            events.append(candidate["url"])
+            if candidate == bgg:
+                raise urllib.error.HTTPError(bgg["url"], 403, "Forbidden", {}, None)
+            path = Path(kwargs["directory"]) / "rules.pdf"
+            path.write_bytes(b"%PDF-test")
+            return path
+
+        api = FakeApi()
+        api.prepare_response["needsApproval"] = True
+        metadata = {
+            "identity": {"approved": True, "edition": "base game", "confidence": "high"},
+            "documentHash": convex_worker.hashlib.sha256(b"%PDF-test").hexdigest(),
+            "pageCount": 8,
+            "fileSize": 9,
+            "contentType": "application/pdf",
+        }
+        with (
+            patch.dict(os.environ, {"RULES_PLEASE_UPLOAD_PDFS": "0"}),
+            patch.object(convex_worker.app_server, "RULEBOOK_SOURCES", {}),
+            patch.object(convex_worker.app_server, "discover_bgg_rulebook_candidates", return_value=[bgg]),
+            patch.object(convex_worker.app_server, "discover_rulebook_candidates", side_effect=web_search),
+            patch.object(convex_worker.app_server, "download_pdf", side_effect=download),
+            patch.object(convex_worker, "_preview_metadata", return_value=metadata),
+        ):
+            convex_worker.process_claim(api, {
+                "job": {"_id": "job-test", "leaseToken": "lease-test"},
+                "game": game,
+            })
+
+        self.assertEqual(events, [bgg["url"], "web search", web["url"]])
+        prepared = next(payload for path, payload in api.calls if path == "/worker/jobs/prepare")
+        self.assertEqual(prepared["source"]["url"], web["url"])
+
     def test_transient_convex_limit_error_is_retryable_even_when_mislabeled_unauthorized(self):
         api = convex_worker.WorkerApi.__new__(convex_worker.WorkerApi)
         api.site_url = "https://example.convex.site"

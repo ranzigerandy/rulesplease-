@@ -74,6 +74,13 @@ RULEBOOK_SOURCES = {
         "confidence": "verified",
         "edition": "base game",
     },
+    456332: {
+        # Public PDF linked from the publisher's High Moon campaign page.
+        "url": "https://drive.google.com/uc?export=download&id=1XhxSTXN4asBxaZ766sySgbZZl6o6QXkB",
+        "label": "High Moon English rulebook (Combo Games)",
+        "confidence": "verified",
+        "edition": "base game",
+    },
     154125: {
         "url": "https://www.exodusbooks.com/samples/games/57362sample.pdf",
         "label": "Pocket Battles: Confederacy vs Union rulebook (Z-Man Games sample)",
@@ -182,10 +189,43 @@ def unexpected_edition_markers(game, value):
     ]
 
 
+def is_supplemental_rulebook(game, value):
+    evidence = normalize(urllib.parse.unquote(value))
+    title = normalize(game.get("name"))
+    if title:
+        evidence = re.sub(rf"\b{re.escape(title)}\b", " ", evidence)
+    return bool(re.search(
+        r"\b(?:solo|solitaire|solitario|automa|single player|one player|"
+        r"summary|player aids?|quick reference|quick start|cheat sheet|faq|"
+        r"unofficial|fan made|fanmade|errata sheet|promo)\b",
+        evidence,
+    ))
+
+
 def validate_rulebook_identity(game, candidate, pages):
     """Return a deterministic identity verdict before a PDF may be indexed."""
     first_pages = "\n".join(page.get("text", "") for page in pages[:3])[:18000]
     url_evidence = " ".join([candidate.get("url", ""), candidate.get("label", "")])
+    # A solo-only PDF can have an opaque filename. Match a cover title at
+    # the start of the first page, including when PDF extraction joins lines.
+    opening = normalize(pages[0].get("text", "")[:300]) if pages else ""
+    title = normalize(game.get("name"))
+    opening = re.sub(rf"^{re.escape(title)}\b", "", opening).lstrip() if title else opening
+    solo_title = re.match(
+        r"(?:solo(?: mode)? (?:rules|rulebook|variant)\b|(?:rules|rulebook) for solo\b)",
+        opening,
+    )
+    url_path = urllib.parse.urlparse(candidate.get("url", "")).path
+    if is_supplemental_rulebook(game, f"{url_path} {candidate.get('label', '')}") or (
+        solo_title and is_supplemental_rulebook(game, solo_title.group())
+    ):
+        return {
+            "approved": False,
+            "reviewRequired": False,
+            "edition": candidate.get("edition", "base game"),
+            "confidence": "rejected",
+            "reason": "This is a rules supplement, not the complete rulebook.",
+        }
     mismatches = sorted(set(
         unexpected_edition_markers(game, url_evidence)
         + unexpected_edition_markers(game, first_pages)
@@ -369,6 +409,86 @@ def decode_search_url(url):
     return url
 
 
+def discover_bgg_rulebook_candidates(game):
+    """Read the game's Files tab using its exact BGG ID and English filter."""
+    candidates = {}
+    for page in range(1, 4):
+        params = urllib.parse.urlencode({
+            "objectid": int(game["id"]),
+            "objecttype": "thing",
+            "languageid": 2184,  # English in the Files listing.
+            "pageid": page,
+            "showcount": 50,
+            "sort": "hot",
+        })
+        try:
+            body, _ = request_text(f"https://api.geekdo.com/api/files?{params}", timeout=6)
+            listing = json.loads(body)
+            files = listing["files"]
+            end_page = int(listing.get("config", {}).get("endpage", page))
+            if not isinstance(files, list):
+                raise ValueError("Invalid BGG file list")
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+            log_discovery(f"BGG Files game={game['id']} page={page} unavailable: {exc}")
+            break
+
+        for file in files:
+            if not isinstance(file, dict):
+                continue
+            file_id = str(file.get("fileid", ""))
+            filename = str(file.get("filename", ""))
+            title = str(file.get("title", ""))
+            evidence = f"{title} {filename}"
+            if (
+                str(file.get("language", "")).casefold() != "english"
+                or not re.fullmatch(r"[0-9]+", file_id)
+                or not filename.lower().endswith(".pdf")
+                or is_supplemental_rulebook(game, evidence)
+                or unexpected_edition_markers(game, evidence)
+            ):
+                continue
+            title_text = normalize(title)
+            file_text = normalize(filename)
+            rules_pattern = r"\b(?:rule\s*books?|rules?|manual|reglamento)\b"
+            title_match = bool(re.search(rules_pattern, title_text))
+            if not title_match and not re.search(rules_pattern, file_text):
+                continue
+            url = f"https://boardgamegeek.com/file/download/{file_id}"
+            candidates[url] = {
+                "url": url,
+                "label": f"{game['name']} — {title or filename} (BoardGameGeek)",
+                "confidence": "auto",
+                "score": 2 if title_match else 1,
+            }
+
+        if not files or page >= end_page or len(candidates) >= 3:
+            break
+
+    ordered = sorted(candidates.values(), key=lambda item: item["score"], reverse=True)
+    return ordered[:3]
+
+
+def iter_rulebook_candidates(game, progress=None, excluded_urls=None):
+    """Only look outside BGG after the caller has tried its candidates."""
+    seen = set(excluded_urls or [])
+    if progress:
+        progress(12, "Checking BoardGameGeek Files for the rulebook.")
+    for candidate in discover_bgg_rulebook_candidates(game):
+        if candidate["url"] not in seen:
+            seen.add(candidate["url"])
+            yield candidate
+
+    known = RULEBOOK_SOURCES.get(game["id"])
+    if known and known["url"] not in seen:
+        seen.add(known["url"])
+        yield known.copy()
+
+    for candidate in discover_rulebook_candidates(game, progress=progress):
+        if candidate["url"] not in seen:
+            seen.add(candidate["url"])
+            yield candidate
+
+
 def discover_rulebook_candidates(game, progress=None):
     name = game["name"]
     year = game.get("year") or ""
@@ -482,7 +602,7 @@ def score_rulebook_candidate(url, game):
     text = normalize(urllib.parse.unquote(url))
     path = parsed.path.lower()
     score = 0
-    if unexpected_edition_markers(game, url):
+    if unexpected_edition_markers(game, text) or is_supplemental_rulebook(game, parsed.path):
         return -100
     if path.endswith(".pdf") or ".pdf" in path:
         score += 45
@@ -496,7 +616,7 @@ def score_rulebook_candidate(url, game):
             score += 35
     if game.get("year") and str(game["year"]) in text:
         score += 8
-    if any(bad in text for bad in ["expansion", "promo", "solo", "landmarks", "rolling", "mini"]) and "solo" not in normalize(game["name"]):
+    if any(bad in text for bad in ["expansion", "landmarks", "rolling", "mini"]):
         score -= 18
     if any(good in text for good in ["basegame", "base game", "official", "english"]):
         score += 10
@@ -1000,27 +1120,7 @@ def process_rulebook_async(bgg_id):
             )
             time.sleep(0.5)
             game = GAMES_BY_ID.get(bgg_id, {"id": bgg_id, "name": f"BGG {bgg_id}"})
-            known_source = RULEBOOK_SOURCES.get(bgg_id)
-            if known_source:
-                sources = [known_source]
-            else:
-                update_game(
-                    bgg_id,
-                    status="searching_rulebook",
-                    statusLabel="Searching rulebook",
-                    statusMessage="No known source yet. Searching the web for rulebook PDFs.",
-                    progress=25,
-                )
-                sources = discover_rulebook_candidates(game, progress=progress)
-                if not sources:
-                    update_game(
-                        bgg_id,
-                        status="rulebook_not_found",
-                        statusLabel="Rulebook not found",
-                        statusMessage="Automatic web discovery could not find a usable rulebook PDF yet.",
-                        progress=100,
-                    )
-                    return
+            sources = iter_rulebook_candidates(game, progress=progress)
 
             source = None
             pdf_path = None
@@ -1038,7 +1138,10 @@ def process_rulebook_async(bgg_id):
                         sourceConfidence=candidate.get("confidence", "auto"),
                         progress=45,
                     )
-                    pdf_path = download_pdf(candidate, game, progress=progress)
+                    pdf_path = download_pdf(
+                        candidate, game, progress=progress, force=True,
+                        require_public_https=candidate["url"].startswith("https://boardgamegeek.com/file/download/"),
+                    )
                     update_game(
                         bgg_id,
                         status="processing_rulebook",
@@ -1047,13 +1150,19 @@ def process_rulebook_async(bgg_id):
                         progress=70,
                     )
                     pages = extract_pages(pdf_path, progress=progress)
+                    identity = validate_rulebook_identity(game, candidate, pages)
+                    if not identity["approved"] and not identity["reviewRequired"]:
+                        raise ValueError(identity["reason"])
                     progress(92, "Building searchable rulebook chunks.")
                     chunks = chunk_pages(pages, candidate)
                     if not chunks:
                         raise ValueError("No searchable chunks were produced.")
                     source = candidate
+                    pdf_path = pdf_path.replace(rules_pdf_path(game))
                     break
                 except Exception as exc:
+                    if pdf_path:
+                        pdf_path.unlink(missing_ok=True)
                     last_error = exc
                     log_discovery(f"candidate rejected game={game['name']!r} url={candidate['url']} error={exc}")
                     pdf_path = None
@@ -1072,7 +1181,10 @@ def process_rulebook_async(bgg_id):
                     bgg_id,
                     status="rulebook_not_found",
                     statusLabel="Rulebook not found",
-                    statusMessage=f"Found candidates, but none had enough extractable text. Last error: {last_error}",
+                    statusMessage=(
+                        f"No usable rulebook PDF was found. Last error: {last_error}"
+                        if last_error else "Automatic discovery did not find a rulebook PDF."
+                    ),
                     progress=100,
                 )
                 return

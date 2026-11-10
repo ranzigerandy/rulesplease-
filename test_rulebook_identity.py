@@ -1,4 +1,5 @@
 import io
+import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -80,6 +81,40 @@ class RulebookIdentityTests(unittest.TestCase):
         )
 
         self.assertEqual(candidates, {})
+
+    def test_bgg_files_pick_the_high_moon_base_rulebook_over_solo_and_other_languages(self):
+        game = {"id": 456332, "name": "High Moon"}
+        files = [
+            {"fileid": "452079", "filename": "HIGH MOON_Solo Mode_EN.pdf",
+             "title": "Solo Mode rules for High Moon - EN", "language": "English"},
+            {"fileid": "460628", "filename": "Reglamento ESP web.pdf",
+             "title": "Reglamento de High Moon", "language": "Spanish"},
+            {"fileid": "460629", "filename": "Reglamento ENG web.pdf",
+             "title": "High Moon Rulebook - ENG", "language": "English"},
+            {"fileid": "999", "filename": "High Moon Rules Summary.pdf",
+             "title": "High Moon Rules Summary", "language": "English"},
+        ]
+        with patch.object(app_server, "request_text", return_value=(json.dumps({"files": files}), "application/json")) as request:
+            candidates = app_server.discover_bgg_rulebook_candidates(game)
+
+        self.assertIn("objectid=456332", request.call_args.args[0])
+        self.assertEqual([candidate["url"] for candidate in candidates], [
+            "https://boardgamegeek.com/file/download/460629",
+        ])
+
+    def test_rejects_solo_rules_from_an_opaque_web_download(self):
+        game = {"id": 456332, "name": "High Moon"}
+        candidate = {"url": "https://example.com/download.pdf", "label": "High Moon discovered rulebook PDF"}
+        solo = app_server.validate_rulebook_identity(game, candidate, [
+            {"text": "High Moon\nSolo Mode Rules\nSetup cards, player turns, game points and scoring."},
+        ])
+        full = app_server.validate_rulebook_identity(game, candidate, [
+            {"text": "High Moon Rulebook\nSetup cards, player turns, game points and scoring. See also the solo mode."},
+        ])
+
+        self.assertFalse(solo["approved"])
+        self.assertFalse(solo["reviewRequired"])
+        self.assertTrue(full["approved"])
 
     def test_manual_pdf_urls_reject_local_networks_and_plain_http(self):
         with self.assertRaisesRegex(ValueError, "public HTTPS"):

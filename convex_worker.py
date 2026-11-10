@@ -15,6 +15,7 @@ import time
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from itertools import islice
 from threading import Thread
 from tempfile import TemporaryDirectory
 
@@ -124,21 +125,14 @@ def _without_none(value):
     return value
 
 
-def _source_candidates(game, manual_source=None, excluded_urls=None):
-    excluded_urls = set(excluded_urls or [])
+def _source_candidates(game, manual_source=None, excluded_urls=None, progress=None):
     if manual_source:
-        if manual_source["url"] not in excluded_urls:
+        if manual_source["url"] not in (excluded_urls or []):
             yield manual_source
         return
-    known = app_server.RULEBOOK_SOURCES.get(game["id"])
-    candidates = [known] if known else []
-    candidates.extend(app_server.discover_rulebook_candidates(game))
-    seen = set()
-    for candidate in candidates:
-        if not candidate or candidate["url"] in seen or candidate["url"] in excluded_urls:
-            continue
-        seen.add(candidate["url"])
-        yield candidate
+    yield from app_server.iter_rulebook_candidates(
+        game, progress=progress, excluded_urls=excluded_urls
+    )
 
 
 def _heartbeat(api, job, phase, progress, message):
@@ -203,31 +197,40 @@ def _process_claim(api, claim, directory):
     approved_source = claim.get("approvedSource")
 
     if not approved_source:
-        candidates = list(
-            _source_candidates(game, manual_source, claim.get("rejectedSourceUrls"))
-        )[:5]
-        if not candidates:
-            raise ValueError("We could not find a new rulebook candidate for this game.")
-
+        candidates = _source_candidates(
+            game,
+            manual_source,
+            claim.get("rejectedSourceUrls"),
+            progress=lambda percent, message: _heartbeat(api, job, "searching_rulebook", percent, message),
+        )
         rejected_hashes = set(claim.get("rejectedDocumentHashes") or [])
         fallback = None
         checked_errors = []
-        for rank, candidate in enumerate(candidates, start=1):
+        bgg_download_failed = False
+        checked_count = 0
+        for rank, candidate in enumerate(islice(candidates, 9), start=1):
+            checked_count = rank
+            is_bgg_file = candidate["url"].startswith("https://boardgamegeek.com/file/download/")
             try:
                 _heartbeat(
                     api,
                     job,
                     "searching_rulebook",
                     min(24, 5 + rank * 3),
-                    f"Checking rulebook candidate {rank} of {len(candidates)}.",
+                    "Checking a PDF from BoardGameGeek Files."
+                    if is_bgg_file else f"Checking rulebook candidate {rank}.",
                 )
-                candidate_path = app_server.download_pdf(
-                    candidate,
-                    game,
-                    force=True,
-                    directory=directory,
-                    require_public_https=bool(manual_source),
-                )
+                try:
+                    candidate_path = app_server.download_pdf(
+                        candidate,
+                        game,
+                        force=True,
+                        directory=directory,
+                        require_public_https=bool(manual_source) or is_bgg_file,
+                    )
+                except (OSError, ValueError):
+                    bgg_download_failed |= is_bgg_file and not manual_source
+                    raise
                 metadata = _preview_metadata(candidate_path, game, candidate)
                 # A URL or file deliberately supplied by the player can have
                 # an inconclusive title match (for example SCOUT). Keep that
@@ -262,9 +265,17 @@ def _process_claim(api, claim, directory):
                 checked_errors.append(str(exc))
 
         if fallback is None:
+            if bgg_download_failed:
+                raise ValueError(
+                    "BoardGameGeek Files lists a rulebook PDF, but its download could not be opened "
+                    "and no usable copy was found elsewhere. You can download it from BoardGameGeek "
+                    "and import the PDF."
+                )
+            if not checked_count:
+                raise ValueError("We could not find a new rulebook candidate for this game.")
             detail = checked_errors[-1] if checked_errors else "no candidate passed the identity check"
             raise ValueError(
-                f"We checked {len(candidates)} rulebook candidate(s), but none was usable. {detail}"
+                f"We checked {checked_count} rulebook candidate(s), but none was usable. {detail}"
             )
 
         preview_candidate, preview_path, metadata, candidate_rank = fallback
